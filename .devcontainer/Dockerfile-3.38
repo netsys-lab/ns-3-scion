@@ -1,0 +1,122 @@
+ARG WORKSPACE_BASE
+
+#FROM mcr.microsoft.com/devcontainers/cpp:1-ubuntu-20.04
+FROM ubuntu:22.04
+RUN apt update
+#-----------------------------------------------------------------------
+# G++ INSTALLATION
+# RUN add-apt-repository ppa:ubuntu-toolchain-r/test
+# RUN apt-get install g++-14 gcc-14
+#-----------------------------------------------------------------------
+# CLANG/LLVM INSTALLATION
+RUN export DEBIAN_FRONTEND=noninteractive &&  apt -y install lsb-release wget gnupg software-properties-common curl git zip unzip tar
+#RUN wget https://apt.llvm.org/llvm.sh
+#RUN chmod a+x llvm.sh
+#RUN  ./llvm.sh 15
+
+#deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main
+#deb-src http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main
+
+
+#RUN readonly llvmVersion=14
+#RUN  apt-get update -y
+#RUN  apt-get install -y lsb-release wget software-properties-common apt-utils
+#RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key| apt-key add -
+#RUN  add-apt-repository -y "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${llvmVersion} main"
+#RUN  apt update -y
+#and after that you can just for example:
+#RUN  apt -y install clang-${llvmVersion} # add all the other stuff here
+#------------------------------------------------------------------------
+
+#RUN  apt -y install libomp-15-dev # required when using clang instead of g++
+# not required unless i want to use libc++ instead of libstdc++
+#RUN  apt -y install libc++-15-dev libc++abi-15-dev
+
+ARG REINSTALL_CMAKE_VERSION_FROM_SOURCE="3.31.6"
+
+# Optionally install the cmake for vcpkg
+COPY ./reinstall-cmake.sh /tmp/
+
+RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
+        chmod +x /tmp/reinstall-cmake.sh && /tmp/reinstall-cmake.sh ${REINSTALL_CMAKE_VERSION_FROM_SOURCE}; \
+    fi \
+    && rm -f /tmp/reinstall-cmake.sh
+
+# [Optional] Uncomment this section to install additional vcpkg ports.
+# RUN su vscode -c "${VCPKG_ROOT}/vcpkg install <your-port-name-here>"
+
+# [Optional] Uncomment this section to install additional packages.
+# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+#     && apt-get -y install --no-install-recommends <your-package-list-here>
+#RUN add-apt-repository ppa:deadsnakes/ppa # for arbitrary python versions independent of ubuntu base images
+RUN  apt update &&  apt -y install cmake-curses-gui python3-dev python3-pip python3-venv  #  python3-build
+#RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+
+#RUN  apt update &&  apt -y install cmake-curses-gui python3.10-dev  python3.10-venv python3.10-distutils #  python3-build
+#RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
+# RUN python3 -m venv .venv && . .venv/bin/activate
+# cppyy for python-bindings
+# --break-system-packages apparently not an option with older python versions
+#RUN python3 -m pip install cppyy==2.4.2
+# or use --prefix=/usr/local and
+# ENV PYTHONPATH="/usr/local/lib/python3.X/site-packages:$PYTHONPATH"
+
+# CC=clang-14 CXX=clang++-14 CMAKE_CXX_COMPILER=clang-14 STDCXX=20 MAKE_NPROCS=24 CXXFLAGS="-nobuiltininc -isystem /usr/lib/clang/14/include -isystem /usr/include -isystem /usr/lib/llvm-14/include/c++/v1 -D_GLIBCXX_USE_CXX11_ABI=1" CFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1 -latomic" CPPYY_CLING_EXTRA_CXXFLAGS="-nobuiltininc -isystem /usr/lib/clang/14/include -isystem /usr/include -isystem /usr/lib/llvm-14/include/c++/v1/ -latomic" pip install --verbose cppyy==2.4.2 --no-binary=cppyy-cling
+#CC=clang-15 CXX=clang++-15 CMAKE_CXX_COMPILER=clang-15 STDCXX=20 MAKE_NPROCS=24 pip3 install --verbose cppyy==2.4.2 --no-binary=cppyy-cling
+
+# CC=clang-14 CXX=clang++-14 CMAKE_CXX_COMPILER=clang-14 STDCXX=20 MAKE_NPROCS=24 CXXFLAGS="-nobuiltininc -isystem /usr/lib/clang/14/include -isystem /usr/include -isystem /usr/lib/llvm-14/include/c++/v1 -D_GLIBCXX_USE_CXX11_ABI=1" CFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1 -latomic" CPPYY_CLING_EXTRA_CXXFLAGS="-nobuiltininc -isystem /usr/lib/clang/14/include -isystem /usr/include -isystem /usr/lib/llvm-14/include/c++/v1/ " pip install --verbose cppyy==2.4.2 --no-binary=cppyy-cling
+
+# BOOST  INSTALATION
+RUN  apt -y install libboost-all-dev # will be 1.71.0
+# TODO: why cant ns3 cmake detect my custom installation ?!
+#RUN  wget -P  /usr/local/boost https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.bz2
+#RUN tar --bzip2 -xf /usr/local/boost/boost_1_87_0.tar.bz2 -C /usr/local/boost
+# or boost_1_87_0/boost_install
+# ENV Boost_DIR=/usr/local/boost/boost_1_87_0/cmake/config
+# ENV CMAKE_MODULE_PATH=/usr/local/boost/boost_1_87_0/cmake/config
+
+
+# for PyViz visualization
+#RUN  apt -y install gir1.2-goocanvas-2.0 python3-gi python3-gi-cairo python3-pygraphviz gir1.2-gtk-3.0 ipython3
+
+RUN  apt -y install sqlite3 libsqlite3-dev
+
+# NetAnim
+# RUN  apt -y install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools
+
+# MPI
+RUN apt -y install openmpi-bin, openmpi-common, openmpi-doc, libopenmpi-dev
+#ENV PATH=$PATH:/usr/lib64/openmpi/bin
+#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/openmpi/lib
+
+RUN  apt -y install libeigen3-dev
+
+RUN  apt -y install gsl-bin libgsl-dev libgslcblas0
+
+#DPDK dependencies
+#RUN  apt -y dpdk-igb-uio-dkms # only available up to ubuntu 20.04 not later
+# RUN  apt -y install dpdk dpdk-dev libdpdk-dev
+
+RUN  apt -y install lxc-utils lxc-templates vtun uml-utilities ebtables bridge-utils
+
+# RANGE_V3 (for C++20 pre <std::ranges>)
+# it should be taken care of by 'FetchContents' automatically
+#RUN git clone https://github.com/ericniebler/range-v3.git
+#RUN cd range-v3 && cmake -B build && cmake --install build --prefix=/usr/local
+
+#RUN git clone https://github.com/Microsoft/vcpkg.git && cd vcpkg &&  ./bootstrap-vcpkg.sh
+#RUN cd vcpkg && CMAKE_CXX_COMPILER=$(which clang++-15)  ./vcpkg integrate install
+#RUN cd vcpkg && CMAKE_CXX_COMPILER=$(which clang++-15)  ./vcpkg install range-v3
+
+#&& python3 -m pip install -r requirements.txt
+#RUN git clone https://github.com/jbeder/yaml-cpp.git /workspaces/ns3-scion-3.38/src/scion/include/yaml-cpp
+#RUN mkdir /workspaces/ns3-scion-3.38/src/scion/include/yaml-cpp/build && cd /workspaces/ns3-scion-3.38/src/scion/include/yaml-cpp/build && cmake ../ && make
+# for clang and clang++
+#ENV PATH=$PATH:/usr/lib/llvm-14/bin
+#ENV YAML_CPP_INCLUDE_PATH=src/scion/include/yaml-cpp/include/
+#ENV YAML_CPP_LIBRARY_PATH=/workspaces/ns3-scion-3.38/src/scion/include/yaml-cpp/build
+#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspaces/ns3-scion-3.38/src/scion/include/yaml-cpp/build
+#ENV CC=clang-14
+#ENV CXX=clang++-14
+
+ENV WORKSPACE_BASE=$WORKSPACE_BASE

@@ -4,13 +4,47 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build",
+            "label": "Configure NS3",
             "type": "shell",
             "command": "./ns3",
             "group": {
+                "kind": "none",
+                "isDefault": false
+            },
+            "options": {
+                "env": {}
+            },
+            "args": [
+                "configure",
+                "--force-refresh",
+                "--out",
+                "build_default",
+                "-d",
+                "default",
+                "--cxx-standard",
+                "20",
+                "--enable-examples",
+                "--enable-sudo",
+                "--enable-modules",
+                "'scion;core;network;internet;internet-apps;applications;csma;csma-layout;bridge;point-to-point;point-to-point-layout;stats;virtual-net-device'",
+                "--disable-modules",
+                "'uan;olsr;energy;propagation;spectrum;dsdv;dsr;lte;wimax;openflow;wifi;antenna;aodv;buildings;mobility;lrwpan;sixlowpan;nix-vector-routing;mpi'",
+                "--enable-python-bindings",
+                "--disable-werror"
+            ]
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "./ns3",
+            "args": [
+                "build"
+            ],
+            "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "problemMatcher": []
         },
         {
             "label": "Run tests",
@@ -20,6 +54,11 @@
                 "kind": "test",
                 "isDefault": true
             }
+        },
+        {
+            "label": "run python binding example",
+            "type": "shell",
+            "command": "$ ./ns3 run --no-build examples/tutorial/first.py"
         }
     ]
 }

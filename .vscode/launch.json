@@ -4,6 +4,29 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        /*
+        // run python script
+        $ ./ns3 shell
+        $ python3 /path/to/your/example/my-script.py
+
+        // run python script under C debugger
+        $ ./ns3 shell
+        $ gdb --args python3 examples/wireless/mixed-wired-wireless.py
+        */
+        {
+            "name": "Python Bindings Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "env": {
+                // replace 'build_default' with the cmake build output dir
+                "PYTHONPATH": "/workspaces/${env:WORKSPACE_BASE}/build_default/lib:/workspaces/${env:WORKSPACE_BASE}/build_default/bindings/python",
+                "PATH": "${env:PATH}:/workspaces/${env:WORKSPACE_BASE}/build_default/lib:/workspaces/${env:WORKSPACE_BASE}/build_default/bindings/python",
+                "LD_LIBRARY_PATH": "/workspaces/${env:WORKSPACE_BASE}/src/scion/include/yaml-cpp/build:${env:LD_LIBRARY_PATH}"
+            },
+            "program": "${file}",
+            "console": "integratedTerminal",
+            //"args": "${command:pickArgs}"
+        },
         {
             "name": "(gdb) Launch from scratch",
             "type": "cppdbg",

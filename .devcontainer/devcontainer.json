@@ -1,0 +1,56 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+	"name": "C++",
+	"build": {
+		"dockerfile": "Dockerfile-3.38",
+
+		"args": {
+		  //"VARIANT": "7",
+		  // build arg was nice ide, but VSCode doesnt seem to support it
+		 // "WORKSPACE_BASE": "ns3-scion-3.38" //"${workspaceFolderBasename}" unfortunately not working here ?!
+		}
+	  },
+	   "containerEnv":{
+				//"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+		//"GITHUB_USER": "${localEnv:GITHUB_USER}"
+		"WORKSPACE_BASE": "ns3-scion-3.38"
+		},
+	  "remoteEnv":
+	   {
+		// for ns3.38
+		"PATH": "${env:PATH}:/usr/lib/llvm-15/bin",
+		// same here: unfortunately "${workspaceFolderBasename}" is not resolved ..
+		"YAML_CPP_INCLUDE_PATH": "/workspaces/${containerEnv:WORKSPACE_BASE}/src/scion/include/yaml-cpp/include/",
+		"YAML_CPP_LIBRARY_PATH": "/workspaces/${containerEnv:WORKSPACE_BASE}/src/scion/include/yaml-cpp/build",
+        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}:/workspaces/${containerEnv:WORKSPACE_BASE}/src/scion/include/yaml-cpp/build",
+ 		"CC": "gcc",
+		"CXX": "g++"
+		//"Boost_DIR": "/usr/local/boost/boost_1_87_0/tools/cmake/config",
+		//"BOOST_ROOT": "/usr/local/boost/boost_1_87_0",
+		//"BOOST_INCLUDEDIR": "/usr/local/boost/boost_1_87_0/",
+		//"BOOST_LIBRARYDIR": "/usr/local/boost/boost_1_87_0/libs",
+		//"CMAKE_PREFIX_PATH": "/usr/local/boost/boost_1_87_0/tools/cmake/config",
+		//"CMAKE_MODULE_PATH": "/usr/local/boost/boost_1_87_0:/usr/share/cmake-3.16/Modules/"//cmake/config"
+	  },
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	//"features": {}
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": {// "pythonbindindings": ". .venv/bin/activate && python3 -m pip install -r requirements.txt"
+						  // "yaml-cpp": "git clone https://github.com/jbeder/yaml-cpp.git /workspaces/scion-simulator-master/src/scion/include/yaml-cpp && mkdir /workspaces/scion-simulator-master/src/scion/include/yaml-cpp/build && cd /workspaces/scion-simulator-master/src/scion/include/yaml-cpp/build && cmake ../ && make"
+						  },
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"settings": {},
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack",
+				"ms-python.python"
+			]
+		}
+	}
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
