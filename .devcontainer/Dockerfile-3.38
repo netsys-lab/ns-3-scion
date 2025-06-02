@@ -85,7 +85,7 @@ RUN  apt -y install sqlite3 libsqlite3-dev
 # RUN  apt -y install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools
 
 # MPI
-RUN apt -y install openmpi-bin, openmpi-common, openmpi-doc, libopenmpi-dev
+#RUN apt -y install openmpi-bin, openmpi-common, openmpi-doc, libopenmpi-dev
 #ENV PATH=$PATH:/usr/lib64/openmpi/bin
 #ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/openmpi/lib
 
