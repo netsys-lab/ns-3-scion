@@ -136,8 +136,6 @@ class SCIONAddress
     Ia _ia;
     AddrType_t addrType;
     Address _hostAddr; // either an Ipv4 or Ipv6 addr. Not InetSocketAddr
-    //uint16_t _port=0; // or does the hostaddress i.e. Ipv6Address already have one ?!
-
     
     // bool m_initialized; //!<  address has been explicitly initialized to a valid value.
 

@@ -497,7 +497,8 @@ ASToDottedHex(Asn as)
 
     bool begin = true;
     int encounteredZerosInRow = 0;
-    for (int pos = 0; auto s : ss.str())
+    int pos = 0;
+    for (auto s : ss.str())
     {
         // the !begin is for the codepath that we last encountered 4 zeros in a row( and dont emit a
         // second ':' )

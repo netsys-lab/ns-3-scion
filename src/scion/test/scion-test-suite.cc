@@ -1,6 +1,6 @@
 #include "ns3/test.h"
 #include "scion-address-test.h"
-
+#include "scion-header-test.h"
 namespace ns3
 {
 /**
@@ -15,6 +15,7 @@ class SCIONTestSuite : public TestSuite
         : TestSuite("SCION", UNIT)
     {
         AddTestCase(new SCIONAddressTestCase(), TestCase::QUICK);
+           AddTestCase(new SCIONHeaderTestCase(), TestCase::QUICK);
     }
 };
 
