@@ -3,6 +3,7 @@
 
 #include "ns3/assert.h"
 #include "ns3/log.h"
+#include "ns3/scion-types.h"
 
 #include <cstdint>
 #include <istream>
@@ -29,10 +30,10 @@ class Isd
     Isd();
 
     /** \brief Constructor from numeric value. */
-    explicit Isd(uint16_t isd);
+    explicit Isd(Isd_t isd);
 
     /** \brief Get the numeric value. */
-    uint16_t GetValue() const;
+    Isd_t GetValue() const;
 
     /** \brief Convert to string representation (decimal). */
     std::string ToString() const;
@@ -55,7 +56,7 @@ class Isd
     bool operator<(const Isd& other) const;
 
   private:
-    uint16_t m_isd; //!< The ISD value.
+    Isd_t m_isd; //!< The ISD value.
 };
 
 /** \brief Stream insertion operator for Isd. */
@@ -86,10 +87,10 @@ class Asn
      * \param as The AS value (must be within 48 bits).
      * \note Asserts if the value exceeds kMaxAsVal.
      */
-    explicit Asn(uint64_t as);
+    explicit Asn(Asn_t as);
 
     /** \brief Get the numeric value. */
-    uint64_t GetValue() const;
+    Asn_t GetValue() const;
 
     /** \brief Convert to string representation (SCION hex format). */
     std::string ToString() const;
@@ -125,13 +126,13 @@ class Asn
     /** \brief Helper to parse SCION native AS number. */
     static bool ParseScionAs(const std::string& s, uint64_t& value);
 
-    uint64_t m_as; //!< The AS value (lowest 48 bits are used).
+    Asn_t m_as; //!< The AS value (lowest 48 bits are used).
 };
 
 /** \brief Stream insertion operator for As. */
-std::ostream& operator<<(std::ostream& os, const As& as);
+std::ostream& operator<<(std::ostream& os, const Asn& as);
 /** \brief Stream extraction operator for As. */
-std::istream& operator>>(std::istream& is, As& as);
+std::istream& operator>>(std::istream& is, Asn& as);
 
 /**
  * \brief SCION ISD-AS identifier.
@@ -155,14 +156,16 @@ class Ia
      */
     Ia(Isd isd, Asn as);
 
+    explicit Ia(Ia_t ia): m_ia(ia){}
+
     /** \brief Get the ISD component. */
     Isd GetIsd() const;
 
     /** \brief Get the AS component. */
-    Asn GetAs() const;
+    Asn GetAsn() const;
 
     /** \brief Get the raw 64-bit combined value. */
-    uint64_t GetValue() const;
+    Ia_t GetValue() const;
 
     /** \brief Check if the IA is zero (0-0). */
     bool IsZero() const;
@@ -192,7 +195,7 @@ class Ia
 
   private:
     static constexpr char kSeparator = '-';
-    uint64_t m_ia; //!< Combined ISD (high 16 bits) and AS (low 48 bits).
+    Ia_t m_ia; //!< Combined ISD (high 16 bits) and AS (low 48 bits).
 };
 
 /** \brief Stream insertion operator for Ia. */

@@ -105,7 +105,7 @@ class Address
      */
     enum MaxSize_e
     {
-        MAX_SIZE = 20
+        MAX_SIZE = 24
     };
 
     /**

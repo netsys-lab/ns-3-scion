@@ -1,4 +1,4 @@
-#include "ns3/ia.h"
+#include "ns3/scion-ia.h"
 
 #include "ns3/abort.h" // For NS_ASSERT_MSG
 #include "ns3/log.h"
@@ -22,7 +22,7 @@ Isd::Isd()
 {
 }
 
-Isd::Isd(uint16_t isd)
+Isd::Isd(Isd_t isd)
     : m_isd(isd)
 {
 }
@@ -115,7 +115,7 @@ Asn::Asn()
 {
 }
 
-Asn::Asn(uint64_t as)
+Asn::Asn(Asn_t as)
     : m_as(as)
 {
     NS_ASSERT_MSG(as <= kMaxAsVal, "AS value " << as << " exceeds maximum " << kMaxAsVal);
@@ -123,7 +123,7 @@ Asn::Asn(uint64_t as)
     m_as &= kMaxAsVal;
 }
 
-uint64_t
+Asn_t
 Asn::GetValue() const
 {
     return m_as;
@@ -315,13 +315,13 @@ Ia::GetIsd() const
 }
 
 Asn
-Ia::GetAs() const
+Ia::GetAsn() const
 {
     // Use As constructor which has range assertion
     return Asn(m_ia & kAsMask);
 }
 
-uint64_t
+Ia_t
 Ia::GetValue() const
 {
     return m_ia;
@@ -344,7 +344,7 @@ std::string
 Ia::ToString() const
 {
     std::stringstream ss;
-    ss << GetIsd().ToString() << kSeparator << GetAs().ToString();
+    ss << GetIsd().ToString() << kSeparator << GetAsn().ToString();
     return ss.str();
 }
 
