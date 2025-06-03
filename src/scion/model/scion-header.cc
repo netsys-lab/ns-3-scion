@@ -19,6 +19,7 @@ namespace ns3
 
 	const uint32_t addrHdrB = AddrHdrLen();
 	const uint32_t hdrBytes = HdrLen * LineLen;
+    NS_ASSERT_MSG(CmnHdrLen + addrHdrB <= hdrBytes, "logic error");
 	const uint32_t pathLen = hdrBytes - CmnHdrLen - addrHdrB;
 
 	NS_ASSERT_MSG( pathLen >= 0,"invalid header, negative pathLen. HdrBytes: " <<
@@ -26,7 +27,8 @@ namespace ns3
     
     
 	//if(  uint32_t minLen = addrHdrB + CmnHdrLen + pathLen; start.GetRemainingSize() < minLen ) // hier muss es size() sein, anstelle von GetRemainingSize()
-    NS_ASSERT_MSG( start.GetRemainingSize() >= pathLen, "provided buffer is too small" );
+    NS_ASSERT_MSG( start.GetRemainingSize() >= pathLen, "provided buffer is too small - have: "
+     <<  start.GetRemainingSize() << " expected: " << pathLen);
     
     // Decode path header.
     _path = _path ? _path : std::make_shared<SCIONPath>(); // FIXME use RawPath
@@ -167,6 +169,7 @@ SCIONHeader::Serialize(Buffer::Iterator start) const
 {
   
 	auto iter_to_begin = start; // only for debug assertions
+    auto iter = start;
 
     uint32_t scnLen = CmnHdrLen + AddrHdrLen() + PathHdrLen();
     NS_ASSERT_MSG(scnLen < MaxHdrLen, "The ScionHeader must not exceede a max of " << MaxHdrLen << " bytes");
@@ -174,7 +177,7 @@ SCIONHeader::Serialize(Buffer::Iterator start) const
     NS_ASSERT_MSG((scnLen % LineLen) == 0, 
     "The ScionHeader length must be a multiple of 4 bytes but is: "<< scnLen);    
 
-    NS_ASSERT_MSG( start.GetRemainingSize() >= scnLen,
+    NS_ASSERT_MSG( iter.GetRemainingSize() >= scnLen,
      "Not enough buffer space to serialize SCIONHeader");
 
     
@@ -184,22 +187,22 @@ SCIONHeader::Serialize(Buffer::Iterator start) const
     // Serialize common header.
     uint32_t firstLine =
         uint32_t(_version & 0xF) << 28 | (uint32_t(TrafficClass) << 20) | (FlowID & 0xFFFFF);
-    start.WriteHtonU32(firstLine);
-    start.WriteU8(_nextHdr);
-    start.WriteU8(HdrLen);
-    start.WriteHtonU16(PayloadLen);
-    start.WriteU8(static_cast<uint8_t>(PathType)); // 8
-    start.WriteU8((uint8_t(dstAddrType & 0xF) << 4) | uint8_t(srcAddrType & 0xF));
-    start.WriteU16(0);   
+    iter.WriteHtonU32(firstLine);
+    iter.WriteU8(_nextHdr);
+    iter.WriteU8(HdrLen);
+    iter.WriteHtonU16(PayloadLen);
+    iter.WriteU8(static_cast<uint8_t>(PathType)); // 8
+    iter.WriteU8((uint8_t(dstAddrType & 0xF) << 4) | uint8_t(srcAddrType & 0xF));
+    iter.WriteU16(0);   
 
-	NS_ASSERT_MSG( start.GetDistanceFrom(iter_to_begin) == CmnHdrLen ,
+	NS_ASSERT_MSG( iter.GetDistanceFrom(iter_to_begin) == CmnHdrLen ,
 	 "Buffer Iter Position should be CmHdrLen after serialization of CommonHeader");
 
     // Serialize address header.
-    SerializeAddrHdr(start);
-    start.Next( AddrHdrLen());
+    SerializeAddrHdr(iter);
+    iter.Next( AddrHdrLen());
 
-	auto actualCmnAddr = start.GetDistanceFrom(iter_to_begin);
+	auto actualCmnAddr = iter.GetDistanceFrom(iter_to_begin);
 	auto expectedCmnAddr =  uint32_t( CmnHdrLen + AddrHdrLen() );
 	NS_ASSERT_MSG( (actualCmnAddr == expectedCmnAddr),
 	 "The ScionHeader size does not match expectations after serializing Common and Address Headers: was " << actualCmnAddr << " expected: "<< expectedCmnAddr );
@@ -207,10 +210,10 @@ SCIONHeader::Serialize(Buffer::Iterator start) const
 
     // Serialize path header.
     if(_path)
-        _path->Serialize(start);
-    start.Next( PathHdrLen());
+        _path->Serialize(iter);
+        iter.Next( PathHdrLen());
 
-	NS_ASSERT_MSG( start.GetDistanceFrom(iter_to_begin) == scnLen,
+	NS_ASSERT_MSG( iter.GetDistanceFrom(iter_to_begin) == scnLen,
 	 "Actual ScionHeader size diverges from computed size" );
 
     
@@ -245,10 +248,10 @@ SCIONHeader::Deserialize( Buffer::Iterator start)
 
     // Decode address header.
    DecodeAddrHdr(start);   
-    start.Next(AddrHdrLen());   
+   start.Next(AddrHdrLen());   
 	
     DecodePathHdr(start);    
-    start.Next(PathHdrLen());
+  //  start.Next(PathHdrLen());
 
     
 	// 'start' this iterator is advanced by HdrLen*LineLen bytes compared to m_content
