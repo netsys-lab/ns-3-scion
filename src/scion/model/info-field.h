@@ -39,14 +39,15 @@ struct InfoField
 
     void Serialize( Buffer::Iterator start) const;
     uint32_t Deserialize( Buffer::Iterator start);
-
-    
-	constexpr static uint8_t Len();
+	    
+	static uint8_t Len();
     operator std::string()const;
     
     #if __cplusplus >= 202002L
 	auto operator<=>(const InfoField& other)const = default;
     #else
+	bool operator==(const InfoField& other) const;
+    bool operator!=(const InfoField& other) const;
     #endif
 
 	friend std::ostream& operator<< (std::ostream& out, const InfoField& info);

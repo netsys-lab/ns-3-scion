@@ -109,7 +109,7 @@ uint8_t BasePath::infIndexForHF( uint8_t hf)  const
     // Len returns the length of the path in bytes.
     uint16_t BasePath::Len() const
     {
-        return METALEN + NumINF * INFO_FIELD_LEN + NumHops * HOPLEN;
+        return METALEN + NumINF *InfoField::Len() + NumHops * HopField::Len();
     }
 
 constexpr uint32_t BasePath::GetSerializedSize(){ return METALEN; }
@@ -149,6 +149,18 @@ bool BasePath::IsLastHop() const
     return CurrHF == NumHops - 1;
 }
 
+SCIONPath::SCIONPath(std::vector<InfoField> inf, std::vector<HopField> hf, std::vector<uint8_t> seglen)
+:BasePath(),
+InfoFields(std::move(inf)),
+HopFields(std::move(hf))
+{
+    NS_ASSERT_MSG(seglen.size()==3, "input error");
+    SetNumHF(HopFields.size());
+    SetNumINF(InfoFields.size());
+    SetSegLen(0,seglen.at(0));
+    SetSegLen(1,seglen.at(1));
+    SetSegLen(2,seglen.at(2));
+}
 
 // IsPenultimateHop returns whether the current hop is the penultimate hop on the path.
 bool
@@ -219,7 +231,43 @@ SCIONPath& SCIONPath::Reverse()
         return GetHopField(GetCurrHF());
     }
 
+/*
+    bool BasePath::Contains(uint64_t ia) const
+    {
+        for( uint8_t i{0}; i < GetNumHF(); ++i)
+        {
+            if(auto hf=GetHopField(i); )
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    // return the start/source AS of the path
+    Ia BasePath::FromIa() const
+    {
+        GetHopField(0)
+    }
+
+    // return the target/destination AS of the path
+    Ia BasePath::ToIa() const
+    {
+        GetHopField(GetNumHF()-1)
+    }
+*/
+
+BasePath::BasePath()
+:NumHops(0),
+NumINF(0),
+CurrHF(0),
+CurrINF(0)
+{
+    SegLen[0]=0;
+    SegLen[1]=0;
+    SegLen[2]=0;
+
+}
 
 // SerializeTo writes the path to a slice.
 // The slice must be big enough to hold the entire data,
@@ -227,19 +275,27 @@ SCIONPath& SCIONPath::Reverse()
 void
 SCIONPath::Serialize(Buffer::Iterator start) const
 {
+    SetNumHF(HopFields.size());
+    SetNumINF(InfoFields.size());
+
     this->BasePath::Serialize(start);
     start.Next(this->BasePath::GetSerializedSize());
 
     for (auto& info : InfoFields)
     {
         info.Serialize(start);
-        start.Next(sizeof(InfoField));
+        start.Next(InfoField::Len());
     }
     for (auto& hop : HopFields)
     {
         hop.Serialize(start);
-        start.Next(sizeof(HopField));
+        start.Next(HopField::Len());
     }
+}
+
+void BasePath::SetSegLen(uint8_t i, uint8_t j)
+{   NS_ASSERT(i>=0 && i<3);
+    SegLen[i] = j;
 }
 
 // DecodeFromBytes fully decodes the SCION path into the corresponding fields.
@@ -254,7 +310,7 @@ SCIONPath::Deserialize(Buffer::Iterator start)
     for (auto& infoField : InfoFields)
     {
         infoField.Deserialize(start);
-        start.Next(sizeof(InfoField));
+        start.Next(InfoField::Len());
     }
 
     HopFields.clear();
@@ -262,7 +318,7 @@ SCIONPath::Deserialize(Buffer::Iterator start)
     for (auto& hf : HopFields)
     {
         hf.Deserialize(start);
-        start.Next(sizeof(HopField));
+        start.Next(HopField::Len());
     }
     return Len();
 }

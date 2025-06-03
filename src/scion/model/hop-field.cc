@@ -20,20 +20,14 @@ namespace ns3
 // @ decreases
 
 
-// SerializeTo writes the fields into the provided buffer.
-// The buffer must be of length >= path.HopLen.
-// @ requires  len(b) >= HopLen
-// SerializeTo reads (but does not modify) the fields of *h and writes to the contents of b.
-// @ preserves acc(h, 1/2) && acc(b)
-// When a call that satisfies the precondition (len(b) >= HopLen) is made,
-// the return value is guaranteed to be nil.
-// @ ensures   err == nil
-// Calls to SerializeTo are guaranteed to terminate.
-// @ decreases
 
 // in bytes (in serialized form)
-constexpr uint8_t HopField::Len(){
-    return sizeof(HopField); 
+uint8_t HopField::Len(){
+    #ifndef SCION_SIMPLIFIED_SIMULATION
+    return 12;
+    #else
+    return 5;
+    #endif
 }
 
 HopField::operator std::string() const
@@ -87,6 +81,17 @@ bool HopField::operator==(const HopField& other) const
     return ConsIngress==other.ConsIngress && ConsEgress == other.ConsEgress;
 }
 
+
+// SerializeTo writes the fields into the provided buffer.
+// The buffer must be of length >= path.HopLen.
+// @ requires  len(b) >= HopLen
+// SerializeTo reads (but does not modify) the fields of *h and writes to the contents of b.
+// @ preserves acc(h, 1/2) && acc(b)
+// When a call that satisfies the precondition (len(b) >= HopLen) is made,
+// the return value is guaranteed to be nil.
+// @ ensures   err == nil
+// Calls to SerializeTo are guaranteed to terminate.
+// @ decreases
 void
 HopField::Serialize( Buffer::Iterator start) const
 {

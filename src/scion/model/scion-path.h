@@ -2,6 +2,7 @@
 
 #include "ns3/hop-field.h"
 #include "ns3/info-field.h"
+#include "ns3/scion-ia.h"
 
 namespace ns3 
 {
@@ -25,8 +26,10 @@ enum class path_type_t : uint8_t
  */
 class BasePath
 {
+    
 public:
-   virtual void Serialize( Buffer::Iterator start ) const;
+    BasePath();
+    virtual void Serialize( Buffer::Iterator start ) const;
     virtual uint32_t Deserialize(Buffer::Iterator);
     uint16_t Len() const;
     bool IsXover() const;
@@ -46,9 +49,21 @@ public:
     HopField GetCurrentHopField() const;
     virtual InfoField GetInfoField( int index) const = 0;
     virtual HopField GetHopField(int index ) const = 0;
+    /* // this API would require a CurrIA field in each HopField
+    bool Contains(uint64_t ia) const ;
+    Ia FromIa() const;
+    Ia ToIa() const;
+    */
+
+    void SetCurrINF(uint8_t inf){ CurrINF=inf;}
+	void SetCurrHF(uint8_t hf){CurrHF=hf;};
+    void SetNumINF(uint8_t inf)const{NumINF=inf;}
+    void SetNumHF(uint8_t hf)const{NumHops=hf;}
+    void SetSegLen(uint8_t i, uint8_t j);
 private:
     uint8_t infIndexForHF(uint8_t hf)const;
-    // TODO: could both the Curr_ fields be implemented with PacketTags which are appended to a Packet's PacketTagList ?!
+    // TODO: could both the Curr_ fields be implemented 
+    //with PacketTags which are appended to a Packet's PacketTagList ?!
     // to benefit from CopyOnWrite semantics
     uint8_t CurrINF;
     uint8_t CurrHF;
@@ -57,9 +72,9 @@ private:
     // theese two fields are derived from the metaHeader 
     // and not present in the binary representation
     // NumINF is the number of InfoFields in the path.
-    uint8_t NumINF;
+    mutable uint8_t NumINF;
     // NumHops is the number HopFields in the path.
-    uint8_t NumHops; // its type matches MetaHdr::CurrtHF
+    mutable uint8_t NumHops; // its type matches MetaHdr::CurrtHF
 };
 
 /*
@@ -89,11 +104,15 @@ class SCIONPath : public BasePath
 	std::vector<HopField> HopFields;
 
 public:
+    SCIONPath():BasePath(){}
+    SCIONPath(std::vector<InfoField> inf,
+              std::vector<HopField> hf, 
+              std::vector<uint8_t> seglen);
 	
     virtual InfoField GetInfoField( int index) const override;
     virtual HopField GetHopField(int index ) const override;
 
-  //  auto operator<=>(const SCIONPath& other )const =default;
+  //  auto operator<=>(const SCIONPath& other )const =default; // would be useful for unittests..
 
     virtual uint32_t Deserialize( Buffer::Iterator ) override; 
     virtual void Serialize( Buffer::Iterator ) const override;

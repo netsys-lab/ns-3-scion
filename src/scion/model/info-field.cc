@@ -41,6 +41,26 @@ InfoField::operator std::string() const
 
 }
 
+#if __cplusplus < 202002L
+bool InfoField::operator==(const InfoField& other) const
+{
+    #ifndef SCION_SIMPLIFIED_SIMULATION
+        return Peer==other.Peer && ConsDir == other.ConsDir
+         && SegID == other.SegID && Timestamp==other.Timestamp;
+    #else
+        return Peer==other.Peer && ConsDir == other.ConsDir;
+    #endif
+}
+
+bool InfoField::operator!=(const InfoField& other) const
+{
+    return !this->operator==(other);
+}
+#endif
+
+
+
+
 // DecodeFromBytes populates the fields from a raw buffer.
 // The buffer must be of length >= path.InfoLen.
 // @ requires  len(raw) >= InfoLen
@@ -64,7 +84,7 @@ InfoField::Deserialize(Buffer::Iterator start)
     Timestamp = start.ReadNtohU32();
     #endif
 
-    return sizeof(InfoField);
+    return InfoField::Len();
 }
 
 
@@ -102,8 +122,14 @@ InfoField::Serialize( Buffer::Iterator start ) const
 
 
 // size in Bytes (in serialized form)
-constexpr uint8_t InfoField::Len()
-{return sizeof(InfoField);} 
+uint8_t InfoField::Len()
+{
+    #ifndef SCION_SIMPLIFIED_SIMULATION
+    return 8;
+    #else
+    return 1;
+    #endif
+} 
 
 #ifndef SCION_SIMPLIFIED_SIMULATION
 // UpdateSegID updates the SegID field by XORing the SegID field with the 2

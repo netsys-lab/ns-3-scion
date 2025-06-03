@@ -20,5 +20,6 @@ build_lib(
   TEST_SOURCES
     test/scion-test-suite.cc
     test/scion-header-test.cc
+    test/scion-path-test.cc
     test/scion-address-test.cc
 )

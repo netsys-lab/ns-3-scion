@@ -50,7 +50,7 @@ struct HopField
     void Serialize( Buffer::Iterator start ) const;
     uint32_t Deserialize( Buffer::Iterator start );
 	
-	constexpr static uint8_t Len();
+	static uint8_t Len();
 
     #if __cplusplus >= 202002L
 	auto operator<=>(const HopField& other )const = default;
