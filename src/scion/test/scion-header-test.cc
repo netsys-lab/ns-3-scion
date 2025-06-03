@@ -23,6 +23,11 @@ void SCIONHeaderTestCase::CheckSCIONHeaderEqual( const SCIONHeader& scionLayer, 
 NS_TEST_ASSERT_MSG_EQ(scionLayer.GetDstIA(), scion.GetDstIA(), "d");
     NS_TEST_ASSERT_MSG_EQ(scionLayer.GetSrcIA(), scion.GetSrcIA(), "d");
 
+
+    NS_TEST_ASSERT_MSG_EQ(scionLayer.GetFlowID(),
+                          scion.GetFlowID(),
+                          "Decoding of SCIONHeader failed (field: FlowID)");
+
     NS_TEST_ASSERT_MSG_EQ(scionLayer.GetTrafficClass(),
                           scion.GetTrafficClass(),
                           "Decoding of SCIONHeader failed (field: TrafficClass)");
@@ -93,6 +98,7 @@ void SCIONHeaderTestCase::Test00()
 
     SCIONHeader scion2;
     pkt->RemoveHeader(scion2);
+    //NS_TEST_ASSERT_MSG_EQ(scion2.)
 
     CheckSCIONHeaderEqual(scion2,scion);
 

@@ -47,8 +47,8 @@ namespace ns3
     };*/
 
 
-
-    auto tmp = _path->Deserialize(start);
+    if(pathLen>0)
+        auto tmp = _path->Deserialize(start);
     }
 
     // returns the length of the path header in serialized wire form
@@ -240,7 +240,6 @@ SCIONHeader::Deserialize( Buffer::Iterator start)
     dstAddrType = AddrType_t(byte9 >> 4 & 0xF);
     srcAddrType = AddrType_t(byte9 & 0xF);
 	start.Next(2); // skip reserved Uint16 zero bits
-	//NS_ASSERT_MSG( m_content.distance_to( start ) == CmnHdrLen , "CmnHeader size mismatch on Deserialization");
     NS_ASSERT_MSG(start.GetDistanceFrom(m_content) == CmnHdrLen, "CmnHeader size mismatch on Deserialization");
     
 

@@ -68,6 +68,9 @@ public:
 	void SetVersion( uint8_t v){_version = v;}
 	uint8_t GetVersion()const{return _version;}
 
+	void SetFlowID(uint32_t fid) { FlowID = fid;}
+	uint32_t GetFlowID()const{return FlowID;}
+
 	void SetTrafficClass( uint8_t tc ){ TrafficClass = tc;}
 	uint8_t GetTrafficClass()const{ return TrafficClass;}
 
