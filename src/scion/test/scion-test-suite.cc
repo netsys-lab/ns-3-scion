@@ -1,5 +1,6 @@
 #include "ns3/test.h"
 #include "scion-address-test.h"
+#include "scion-node-test.h"
 #include "scion-header-test.h"
 #include "scion-path-test.h"
 #include "scmp/scion-scmp-test.h"
@@ -20,6 +21,7 @@ class SCIONTestSuite : public TestSuite
         AddTestCase(new SCIONHeaderTestCase(), TestCase::QUICK);
         AddTestCase(new SCIONPathTestCase(), TestCase::QUICK);
         AddTestCase(new SCIONSCMPTestCase(), TestCase::QUICK);
+        AddTestCase(new SCIONNodeTestCase(), TestCase::QUICK);
     }
 };
 

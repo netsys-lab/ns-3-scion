@@ -7,6 +7,7 @@ build_lib(
     model/info-field.cc
     model/scion-path.cc
     model/scion-header.cc
+    model/scion-node.cc
     model/scmp/scmp-destination-unreachable.cc
     model/scmp/scmp-echo.cc
     model/scmp/scmp-external-interface-down.cc
@@ -35,10 +36,12 @@ build_lib(
     model/scion-path.h
     model/scion-types.h
     model/scion-ia.h
+    model/scion-node.h
     model/scion-address.h
   LIBRARIES_TO_LINK
     ${libcore} ${libnetwork} ${libinternet}
   TEST_SOURCES
+    test/scion-node-test.cc
     test/scion-test-suite.cc
     test/scion-header-test.cc
     test/scion-path-test.cc
