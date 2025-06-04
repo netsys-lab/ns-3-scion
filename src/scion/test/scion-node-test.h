@@ -12,6 +12,7 @@ class SCIONNodeTestCase : public TestCase
 {
 
     void Test00();
+    void Test01();
 
 public:
     SCIONNodeTestCase();

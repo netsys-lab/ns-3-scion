@@ -9,6 +9,31 @@
 
 namespace ns3
 {
+
+void
+SCIONHeader::SetDscp(DscpType dscp)
+{
+    //NS_LOG_FUNCTION(this << dscp);
+    TrafficClass &= 0x3; // Clear out the DSCP part, retain 2 bits of ECN
+    TrafficClass |= (dscp << 2);
+}
+
+    SCIONHeader::DscpType
+SCIONHeader::GetDscp() const
+{
+    //NS_LOG_FUNCTION(this);
+    // Extract only first 6 bits of TOS byte, i.e 0xFC
+    return DscpType((TrafficClass & 0xFC) >> 2);
+}
+
+    void SCIONHeader::SetEcn(EcnType ecn)
+    {
+        //NS_LOG_FUNCTION(this << ecn);
+        // Clear out the ECN part(least significant two bits), retain 6 bits of DSCP
+        TrafficClass &= 0xFC;
+        TrafficClass |= ecn;
+    }
+
     /*
     decode the path header
     Only call after Common Headers has been decoded (and Path Length is known)

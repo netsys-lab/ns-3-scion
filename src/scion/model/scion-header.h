@@ -21,6 +21,64 @@ class SCIONAddress;
 class SCIONHeader : public Header
 {
 public:
+ 	/**
+     * \enum EcnType
+	 * \todo code duplication with Ipv4Header
+     * \brief ECN Type defined in \RFC{3168}
+     */
+    enum EcnType
+    {
+        // Prefixed with "ECN" to avoid name clash (bug 1723)
+        ECN_NotECT = 0x00,
+        ECN_ECT1 = 0x01,
+        ECN_ECT0 = 0x02,
+        ECN_CE = 0x03
+    };
+	/**
+     * \enum DscpType
+	 * \todo code duplication with Ipv4Header
+     * \brief DiffServ codepoints
+     *
+     * The values correspond to the 6-bit DSCP codepoint within the 8-bit
+     * DS field defined in \RFC{2474}.  ECN bits are separately set with the
+     * SetEcn() method.  Codepoints are defined in
+     * Assured Forwarding (AF) \RFC{2597},
+     * Expedited Forwarding (EF) \RFC{2598}, and
+     * Default and Class Selector (CS) \RFC{2474}.
+     */
+    enum DscpType
+    {
+        DscpDefault = 0x00,
+
+        // Prefixed with "DSCP" to avoid name clash (bug 1723)
+        DSCP_CS1 = 0x08,  // octal 010
+        DSCP_AF11 = 0x0A, // octal 012
+        DSCP_AF12 = 0x0C, // octal 014
+        DSCP_AF13 = 0x0E, // octal 016
+
+        DSCP_CS2 = 0x10,  // octal 020
+        DSCP_AF21 = 0x12, // octal 022
+        DSCP_AF22 = 0x14, // octal 024
+        DSCP_AF23 = 0x16, // octal 026
+
+        DSCP_CS3 = 0x18,  // octal 030
+        DSCP_AF31 = 0x1A, // octal 032
+        DSCP_AF32 = 0x1C, // octal 034
+        DSCP_AF33 = 0x1E, // octal 036
+
+        DSCP_CS4 = 0x20,  // octal 040
+        DSCP_AF41 = 0x22, // octal 042
+        DSCP_AF42 = 0x24, // octal 044
+        DSCP_AF43 = 0x26, // octal 046
+
+        DSCP_CS5 = 0x28, // octal 050
+        DSCP_EF = 0x2E,  // octal 056
+
+        DSCP_CS6 = 0x30, // octal 060
+        DSCP_CS7 = 0x38  // octal 070
+    };
+
+
 	~SCIONHeader(){};
 	SCIONHeader()=default;
 
@@ -67,7 +125,10 @@ public:
 
 	void SetVersion( uint8_t v){_version = v;}
 	uint8_t GetVersion()const{return _version;}
-
+	EcnType GetEcn() const;
+	void SetEcn(EcnType ecn);
+	DscpType GetDscp() const;
+	void SetDscp(DscpType dscp);
 	void SetFlowID(uint32_t fid) { FlowID = fid;}
 	uint32_t GetFlowID()const{return FlowID;}
 
