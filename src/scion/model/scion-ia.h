@@ -4,7 +4,8 @@
 #include "ns3/assert.h"
 #include "ns3/log.h"
 #include "ns3/scion-types.h"
-
+#include "ns3/attribute-helper.h"
+#include "ns3/attribute.h"
 #include <cstdint>
 #include <istream>
 #include <limits> // Required for std::numeric_limits
@@ -202,6 +203,18 @@ class Ia
 std::ostream& operator<<(std::ostream& os, const Ia& ia);
 /** \brief Stream extraction operator for Ia. */
 std::istream& operator>>(std::istream& is, Ia& ia);
+
+
+// --- AttributeValue Implementation for Ia ---
+ATTRIBUTE_VALUE_DEFINE_WITH_NAME(Ia, Ia);
+ATTRIBUTE_ACCESSOR_DEFINE(Ia);
+ATTRIBUTE_CHECKER_DEFINE(Ia);
+
+std::ostream& operator<<(std::ostream& os, const IaValue& value);
+std::istream& operator>>(std::istream& is, IaValue& value);
+
+Ptr<AttributeValue> MakeIaValue(const Ia& ia);
+
 
 } // namespace ns3
 

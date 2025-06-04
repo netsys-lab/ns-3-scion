@@ -1,8 +1,9 @@
 #include "ns3/scion-ia.h"
-
+#include "ns3/object.h"
 #include "ns3/abort.h" // For NS_ASSERT_MSG
 #include "ns3/log.h"
-
+#include "ns3/string.h"
+#include "ns3/attribute-accessor-helper.h"
 #include <charconv> // C++17 for efficient parsing
 #include <iomanip>
 #include <sstream>
@@ -417,5 +418,90 @@ operator>>(std::istream& is, Ia& ia)
     }
     return is;
 }
+
+// --- IaValue Implementation ---
+
+IaValue::IaValue()
+    : m_value() // Default construct Ia (0-0)
+{
+}
+
+IaValue::IaValue(const Ia& value)
+    : m_value(value)
+{
+}
+
+Ia
+IaValue::Get() const
+{
+    return m_value;
+}
+
+void
+IaValue::Set(const Ia& value)
+{
+    m_value = value;
+}
+
+Ptr<AttributeValue>
+IaValue::Copy() const
+{
+    return Create<IaValue>(*this);
+}
+
+std::string
+IaValue::SerializeToString(Ptr<const AttributeChecker> checker) const
+{
+    // Delegate checking? String checker doesn't do much here.
+    return m_value.ToString();
+}
+
+bool
+IaValue::DeserializeFromString(std::string value, Ptr<const AttributeChecker> checker)
+{
+    // Delegate checking?
+    Ia parsed_ia;
+    if (Ia::FromString(value, parsed_ia))
+    {
+        m_value = parsed_ia;
+        return true;
+    }
+    NS_LOG_WARN("IaValue::DeserializeFromString: Failed to parse IA from string '" << value << "'");
+    return false;
+}
+
+std::ostream&
+operator<<(std::ostream& os, const IaValue& value)
+{
+    os << value.Get(); // Use Ia's stream operator
+    return os;
+}
+
+std::istream&
+operator>>(std::istream& is, IaValue& value)
+{
+    std::string s;
+    is >> s;
+    Ia ia;
+    if (!Ia::FromString(s, ia))
+    {
+        // Match behavior of other Value types: set failbit on stream
+        is.setstate(std::ios::failbit);
+    }
+    value.Set(ia);
+    return is;
+}
+
+// --- Ia Helpers for Attributes ---
+
+Ptr<AttributeValue>
+MakeIaValue(const Ia& ia)
+{
+    return Create<IaValue>(ia);
+}
+
+
+ATTRIBUTE_CHECKER_IMPLEMENT(Ia);
+ // ATTRIBUTE_VALUE_IMPLEMENT(Ia); // TODO: this would save the boilerplate code
 
 } // namespace ns3
