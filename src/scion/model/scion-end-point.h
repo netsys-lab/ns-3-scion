@@ -14,18 +14,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ * Author:
  */
 
 #ifndef SCION_END_POINT_H
 #define SCION_END_POINT_H
 
 #include "ns3/callback.h"
-#include "ns3/ipv4-address.h"
-#include "ns3/scion-header.h"
-#include "ns3/ipv4-header.h"
 #include "ns3/scion-address.h"
-#include "ns3/ipv4-interface.h"
+#include "ns3/scion-header.h"
+
 #include "ns3/net-device.h"
 
 #include <stdint.h>
@@ -34,6 +32,7 @@ namespace ns3
 {
 
 class Header;
+class SCIONInterface;
 class Packet;
 
 /**
@@ -128,7 +127,10 @@ class SCIONEndPoint
      */
     Ptr<NetDevice> GetBoundNetDevice();
 
-    // Called from socket implementations to get notified about important events.
+    /* Called from socket implementations to get notified about important events.
+       in UdpSocketImpl::FinishBind():
+        m_endPoint->SetRxCallback( MakeCallback(&UdpSocketImpl::ForwardUp, Ptr<UdpSocketImpl>(this)));
+    */
     /**
      * \brief Set the reception callback.
      * \param callback callback function
@@ -136,8 +138,13 @@ class SCIONEndPoint
     void SetRxCallback(
         Callback<void, Ptr<Packet>, SCIONHeader, uint16_t, Ptr<SCIONInterface>> callback);
     /**
-     * \brief Set the ICMP callback.
+     * \brief Set the SCMP callback.
      * \param callback callback function
+     *  set in UdpSocketImpl::FinishBind() on the Socket's EndPoint
+     *    m_endPoint->SetScmpCallback(MakeCallback(&UdpSocketImpl::ForwardScmp, Ptr<UdpSocketImpl>(this)));
+     * 
+     * which then in turn calls the socket's Scmp callback, which is an attribute of the UdpSocketImpl's TypeId and Null by default
+     * unless explicitly set by the user
      */
     void SetScmpCallback(Callback<void, SCIONAddress, uint8_t, uint8_t, uint8_t, uint32_t> callback);
     /**
@@ -155,6 +162,8 @@ class SCIONEndPoint
      * \param header the packet header
      * \param sport source port
      * \param incomingInterface incoming interface
+     * 
+     * calls the RxCallback in turn
      */
     void ForwardUp(Ptr<Packet> p,
                    const SCIONHeader& header,
@@ -165,16 +174,16 @@ class SCIONEndPoint
      * \brief Forward the ICMP packet to the upper level.
      *
      * Called from an L4Protocol implementation to notify an endpoint of
-     * an icmp message reception.
+     * an SCMP message reception.
+     * Eventually calls the SCMP callback
      *
      * \param scmpSource source IP address
-     * \param scmpTtl time-to-live
      * \param scmpType SCMP type
      * \param scmpCode SCMP code
      * \param scmpInfo SCMP info
+     *  
      */
-    void ForwardScmp(SCIONAddress icmpSource,
-                     uint8_t scmpTtl,
+    void ForwardScmp(SCIONAddress icmpSource,              
                      uint8_t scmpType,
                      uint8_t scmpCode,
                      uint32_t scmpInfo);
@@ -223,9 +232,10 @@ class SCIONEndPoint
     Callback<void, Ptr<Packet>, SCIONHeader, uint16_t, Ptr<SCIONInterface>> m_rxCallback;
 
     /**
-     * \brief 
+     * \brief invoked by ForwardScmp
+     * source address, scmp type,scmp code, info
      */
-    Callback<void, SCIONAddress, uint8_t, uint8_t, uint8_t, uint32_t> m_scmpCallback;
+    Callback<void, SCIONAddress, uint8_t, uint8_t, uint32_t> m_scmpCallback;
 
     /**
      * \brief The destroy callback.

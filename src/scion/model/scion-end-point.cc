@@ -14,9 +14,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ * Author:
  */
-
+#include "ns3/scion-interface.h"
 #include "scion-end-point.h"
 
 #include "ns3/log.h"
@@ -145,8 +145,7 @@ SCIONEndPoint::ForwardUp(Ptr<Packet> p,
 }
 
 void
-SCIONEndPoint::ForwardScmp(SCIONAddress scmpSource,
-                          uint8_t scmpTtl,
+SCIONEndPoint::ForwardScmp(SCIONAddress scmpSource,                          
                           uint8_t scmpType,
                           uint8_t scmpCode,
                           uint32_t scmpInfo)
