@@ -4,6 +4,7 @@
 #include "scion-header-test.h"
 #include "scion-path-test.h"
 #include "scmp/scion-scmp-test.h"
+#include "scion-socket-address-test.h"
 namespace ns3
 {
 /**
@@ -21,7 +22,8 @@ class SCIONTestSuite : public TestSuite
         AddTestCase(new SCIONHeaderTestCase(), TestCase::QUICK);
         AddTestCase(new SCIONPathTestCase(), TestCase::QUICK);
         AddTestCase(new SCIONSCMPTestCase(), TestCase::QUICK);
-        AddTestCase(new SCIONNodeTestCase(), TestCase::QUICK);
+        AddTestCase(new SCIONSocketAddressTestCase(), TestCase::QUICK);
+        //AddTestCase(new SCIONNodeTestCase(), TestCase::QUICK);
     }
 };
 

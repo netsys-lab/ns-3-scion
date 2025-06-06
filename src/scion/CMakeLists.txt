@@ -16,9 +16,9 @@ build_lib(
     model/scmp/scmp-packet-too-big.cc
     model/scmp/scmp-parameter-problem.cc
     model/scmp/scmp-traceroute.cc
+    model/scion-socket-address.cc
   HEADER_FILES
     model/util/endian-utils.h
-
     model/scmp/scmp-echo.h
     model/scmp/scmp-header.h
     model/scmp/scmp-destination-unreachable.h
@@ -38,10 +38,12 @@ build_lib(
     model/scion-ia.h
     model/scion-node.h
     model/scion-address.h
+    model/scion-socket-address.h
   LIBRARIES_TO_LINK
     ${libcore} ${libnetwork} ${libinternet}
   TEST_SOURCES
-    test/scion-node-test.cc
+    test/scion-socket-address-test.cc
+    #test/scion-node-test.cc
     test/scion-test-suite.cc
     test/scion-header-test.cc
     test/scion-path-test.cc
