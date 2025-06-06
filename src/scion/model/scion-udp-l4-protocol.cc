@@ -168,10 +168,10 @@ ScionUdpL4Protocol::DoDispose()
 }
 
 Ptr<Socket>
-ScionUdpL4Protocol::CreateSocket() // does this even need overriding ?! currently its identical to UdpL4Protocol's impl.
+ScionUdpL4Protocol::CreateSocket()
 {
     NS_LOG_FUNCTION(this);
-    Ptr<UdpSocketImpl> socket = CreateObject<UdpSocketImpl>();
+    Ptr<UdpSocketImpl> socket = CreateObject<SCIONUdpSocketImpl>();
     socket->SetNode(m_node);
     socket->SetUdp(this);
     m_sockets.push_back(socket);
@@ -179,7 +179,7 @@ ScionUdpL4Protocol::CreateSocket() // does this even need overriding ?! currentl
 }
 
 SCIONEndPoint*
-ScionUdpL4Protocol::Allocate()
+ScionUdpL4Protocol::AllocateSCION()
 {
     NS_LOG_FUNCTION(this);
     return m_endPoints->Allocate();
@@ -193,7 +193,7 @@ ScionUdpL4Protocol::Allocate(SCIONAddress address)
 }
 
 SCIONEndPoint*
-ScionUdpL4Protocol::Allocate(Ptr<NetDevice> boundNetDevice, uint16_t port)
+ScionUdpL4Protocol::AllocateSCION(Ptr<NetDevice> boundNetDevice, uint16_t port)
 {
     NS_LOG_FUNCTION(this << boundNetDevice << port);
     return m_endPoints->Allocate(boundNetDevice, port);

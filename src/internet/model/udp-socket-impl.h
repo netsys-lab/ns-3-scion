@@ -121,7 +121,7 @@ class UdpSocketImpl : public UdpSocket
                        Socket::Ipv6MulticastFilterMode filterMode,
                        std::vector<Ipv6Address> sourceAddresses) override;
 
-  private:
+  protected:
     // Attributes set through UdpSocket base class
     void SetRcvBufSize(uint32_t size) override;
     uint32_t GetRcvBufSize() const override;
@@ -145,7 +145,7 @@ class UdpSocketImpl : public UdpSocket
      * Finish the binding process
      * \returns 0 on success, -1 on failure
      */
-    int FinishBind();
+    virtual int FinishBind();
 
     /**
      * \brief Called by the L3 protocol when it received a packet to pass on to TCP.
@@ -192,14 +192,14 @@ class UdpSocketImpl : public UdpSocket
     /**
      * \brief Deallocate m_endPoint and m_endPoint6
      */
-    void DeallocateEndPoint();
+    virtual void DeallocateEndPoint();
 
     /**
      * \brief Send a packet
      * \param p packet
      * \returns 0 on success, -1 on failure
      */
-    int DoSend(Ptr<Packet> p);
+    virtual int DoSend(Ptr<Packet> p);
     /**
      * \brief Send a packet to a specific destination and port (IPv4)
      * \param p packet
@@ -248,6 +248,17 @@ class UdpSocketImpl : public UdpSocket
                       uint8_t icmpCode,
                       uint32_t icmpInfo);
 
+    void SetErrno(SocketErrno );
+    bool GetShutdownSend()const;
+    bool GetShutdownRecv()const;
+    void SetConnected(bool );
+    bool Connected()const;
+    void SetDefaultAddrPort(Address, uint16_t);
+    const Address& GetDefaultAddr()const;
+    uint16_t GetDefaultPort()const;
+    void AddRxAvailable(uint32_t);
+    void EnqueueForDeliver(Ptr<Packet>, Address);
+private:                      
     // Connections to other layers of TCP/IP
     Ipv4EndPoint* m_endPoint;  //!< the IPv4 endpoint
     Ipv6EndPoint* m_endPoint6; //!< the IPv6 endpoint

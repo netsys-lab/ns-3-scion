@@ -47,8 +47,11 @@ class SCIONInterface;
  * \ingroup socket
  * \ingroup udp
  *
- * \brief A sockets interface to UDP
- *
+ * \brief the SCION capable UDP socket implementation,
+ *  created by ScionUdpL4Protocol.
+ *  The ScionStackHelper aggregates ScionUdpL4Protocol onto Nodes,
+ *   and thus allows Applications on this Node to listen on and dial SCION  Addresses,
+ *   which is impossible with UdpL4Protocol installed by the InternetStackHelper.
  */
 
 class ScionScionUdpSocketImpl : public ScionUdpSocketImpl
@@ -66,31 +69,26 @@ class ScionScionUdpSocketImpl : public ScionUdpSocketImpl
     ~ScionUdpSocketImpl() override;
 
 
-
-    SocketErrno GetErrno() const override;
-    SocketType GetSocketType() const override;
-
-    int Bind() override;
-    int Bind6() override;
+    int BindSCION();
     int Bind(const Address& address) override;
-    int Close() override;
-    int ShutdownSend() override;
-    int ShutdownRecv() override;
+    int Close() override; // DeallocateEndpoint()
     int Connect(const Address& address) override;
-    int Listen() override;
-    uint32_t GetTxAvailable() const override;
-    int Send(Ptr<Packet> p, uint32_t flags) override;
-    int SendTo(Ptr<Packet> p, uint32_t flags, const Address& address) override;
-    uint32_t GetRxAvailable() const override;
-    Ptr<Packet> Recv(uint32_t maxSize, uint32_t flags) override;
+    
+    // int Send(Ptr<Packet> p, uint32_t flags) override; just calls DoSend()
+    int SendTo(Ptr<Packet> p, uint32_t flags, const Address& address) override; // calls DoSendTo()
+    // getter for m_rxAvailable which is increased in ForwardUp()[enqueue] and decreased in RecvFrom() [dequeue]
+    //uint32_t GetRxAvailable() const override; 
+     // just calls RecvFrom() and discards the address
+    // Ptr<Packet> Recv(uint32_t maxSize, uint32_t flags) override;
+    // simply dequeues (address|packet) pair from deliveryQueue
     Ptr<Packet> RecvFrom(uint32_t maxSize, uint32_t flags, Address& fromAddress) override;
+
     int GetSockName(Address& address) const override;
+    // return the remote address, this socket's endpoint is connected to
     int GetPeerName(Address& address) const override;
     void BindToNetDevice(Ptr<NetDevice> netdevice) override;
 
-  private:
-    void SetMtuDiscover(bool discover) override;
-    bool GetMtuDiscover() const override;
+  protected:
 
     /**
      * \brief UdpSocketFactory friend class.
@@ -103,43 +101,46 @@ class ScionScionUdpSocketImpl : public ScionUdpSocketImpl
      * Finish the binding process
      * \returns 0 on success, -1 on failure
      */
-    int FinishBind();
+    virtual int FinishBind()override;
 
     /**
      * \brief Called by the L3 protocol when it received a packet to pass on to TCP.
      *
      * \param packet the incoming packet
-     * \param header the packet's IPv4 header
+     * \param header the packet's SCION. It is stripped from the packet.
      * \param port the remote port
      * \param incomingInterface the incoming interface
      */
     void ForwardUp(Ptr<Packet> packet,
-                   Ipv4Header header,
+                   SCIONHeader header,
                    uint16_t port,
-                   Ptr<Ipv4Interface> incomingInterface);
+                   Ptr<SCIONInterface> incomingInterface);
 
 
     /**
-     * \brief Kill this socket by zeroing its attributes (IPv4)
+     * \brief Kill this socket by zeroing its attributes 
      *
      * This is a callback function configured to m_endpoint in
      * SetupCallback(), invoked when the endpoint is destroyed.
+     * 
+     * installed by FinishBind()
      */
-    void Destroy();
+    void DestroySCION();
 
 
 
     /**
-     * \brief Deallocate m_endPoint and m_endPoint6
+     * \brief Deallocate EndPoints
      */
-    void DeallocateEndPoint();
+    virtual void DeallocateEndPoint() override;
 
     /**
      * \brief Send a packet
+     * called from int Send(Ptr<Packet> p, uint32_t flags) 
      * \param p packet
      * \returns 0 on success, -1 on failure
      */
-    int DoSend(Ptr<Packet> p);
+    virtual int DoSend(Ptr<Packet> p) override;
     /**
      * \brief Send a packet to a specific destination and port (IPv4)
      * \param p packet
@@ -148,49 +149,34 @@ class ScionScionUdpSocketImpl : public ScionUdpSocketImpl
      * \param tos ToS
      * \returns 0 on success, -1 on failure
      */
-    int DoSendTo(Ptr<Packet> p, Ipv4Address daddr, uint16_t dport, uint8_t tos);
-    /**
-     * \brief Send a packet to a specific destination and port (IPv6)
-     * \param p packet
-     * \param daddr destination address
-     * \param dport destination port
-     * \returns 0 on success, -1 on failure
-     */
-    int DoSendTo(Ptr<Packet> p, Ipv6Address daddr, uint16_t dport);
+    int DoSendToSCION(Ptr<Packet> p, SCIONAddress daddr, uint16_t dport, uint8_t tos);
+    
 
     /**
      * \brief Called by the L3 protocol when it received an SCMP packet to pass on to L4.
      *
-     * \param icmpSource the ICMP source address     
-     * \param icmpType the ICMP Type
-     * \param icmpCode the ICMP Code
-     * \param icmpInfo the ICMP Info
+     * \param scmpSource the SCMP source address     
+     * \param scmpType the SCMP Type
+     * \param scmpCode the SCMP Code
+     * \param scmpInfo the SCMP Info
      */
-    void ForwardScmp(Ipv4Address icmpSource,                     
-                     uint8_t icmpType,
-                     uint8_t icmpCode,
-                     uint32_t icmpInfo);
+    void ForwardScmp(SCIONAddress scmpSource,                     
+                     uint8_t scmpType,
+                     uint8_t scmpCode,
+                     uint32_t scmpInfo);
 
 
     // Connections to other layers of TCP/IP
     SCIONEndPoint* m_endPoint;  //!< the SCION endpoint
 
-    Callback<void, Ipv4Address,, uint8_t, uint8_t, uint32_t>
+    Callback<void, SCIONAddress,, uint8_t, uint8_t, uint32_t>
         m_scmpCallback; //!< SCMP callback
 
 
-    Address m_defaultAddress;                      //!< Default address
-    uint16_t m_defaultPort;                        //!< Default port
+    //Address m_defaultAddress;                      //!< Default L3 address (Ipv4Address|Ipv6Address) set to remote address on Connect()
+    // uint16_t m_defaultPort;                        //!< Default port set to remote port on Connect()
     
-    mutable SocketErrno m_errno; //!< Socket error code
-    bool m_shutdownSend;         //!< Send no longer allowed
-    bool m_shutdownRecv;         //!< Receive no longer allowed
-    bool m_connected;            //!< Connection established
-    bool m_allowBroadcast;       //!< Allow send broadcast packets
-
-
-
-
+    
 };
 
 } // namespace ns3

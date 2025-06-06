@@ -187,6 +187,16 @@ UdpSocketImpl::Destroy6()
     m_endPoint6 = nullptr;
 }
 
+void UdpSocketImpl::SetConnected(bool cn)
+{
+    m_connected = cn;
+}
+
+    bool UdpSocketImpl::Connected() const
+    {
+        return m_connected;
+    }
+
 /* Deallocate the end point and cancel all the timers */
 void
 UdpSocketImpl::DeallocateEndPoint()
@@ -401,6 +411,36 @@ UdpSocketImpl::Close()
     DeallocateEndPoint();
     return 0;
 }
+
+void UdpSocketImpl::SetErrno(SocketErrno err)
+{
+m_errno = err;
+}
+
+bool UdpSocketImpl::GetShutdownSend()const
+{
+return m_shutdownSend;
+}
+
+    bool UdpSocketImpl::GetShutdownRecv()const
+    {
+        return m_shutdownRecv;
+    }
+
+void UdpSocketImpl::SetDefaultAddrPort(Address addr, uint16_t p)
+{
+m_defaultAddress = addr;
+m_defaultPort = p;
+}
+
+    const Address& UdpSocketImpl::GetDefaultAddr()const{
+        return m_defaultAddress;
+    }
+
+    uint16_t UdpSocketImpl::GetDefaultPort()const
+    {
+        return m_defaultPort;
+    }
 
 int
 UdpSocketImpl::Connect(const Address& address)
@@ -845,6 +885,18 @@ UdpSocketImpl::SendTo(Ptr<Packet> p, uint32_t flags, const Address& address)
         return DoSendTo(p, ipv6, port);
     }
     return -1;
+}
+
+// attention: this enqueues the packet without checking the current RxAvailable!
+//          the new packet might exceede the RecvBuff size
+void UdpSocketImpl::EnqueueForDeliver(Ptr<Packet> p, Address addr)
+{
+m_deliveryQueue.emplace(p,addr);
+}
+
+void UdpSocketImpl::AddRxAvailable(uint32_t sz)
+{
+    m_rxAvailable += sz;
 }
 
 uint32_t

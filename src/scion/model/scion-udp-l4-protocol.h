@@ -73,23 +73,23 @@ class ScionUdpL4Protocol : public SCIONL4Protocol, public UdpL4Protocol
     Ptr<Socket> CreateSocket();
 
     /**
-     * \brief Allocate an IPv4 Endpoint
+     * \brief Allocate an SCION Endpoint
      * \return the Endpoint
      */
-    SCIONEndPoint* Allocate();
+    SCIONEndPoint* AllocateSCION();
     /**
-     * \brief Allocate an IPv4 Endpoint
+     * \brief Allocate an SCION Endpoint
      * \param address address to use
      * \return the Endpoint
      */
     SCIONEndPoint* Allocate(SCIONAddress address);
     /**
-     * \brief Allocate an IPv4 Endpoint
+     * \brief Allocate an SCION Endpoint
      * \param boundNetDevice Bound NetDevice (if any)
      * \param port port to use
      * \return the Endpoint
      */
-    SCIONEndPoint* Allocate(Ptr<NetDevice> boundNetDevice, uint16_t port);
+    SCIONEndPoint* AllocateSCION(Ptr<NetDevice> boundNetDevice, uint16_t port);
     /**
      * \brief Allocate an IPv4 Endpoint
      * \param boundNetDevice Bound NetDevice (if any)
@@ -120,9 +120,9 @@ class ScionUdpL4Protocol : public SCIONL4Protocol, public UdpL4Protocol
      */
     void DeAllocate(SCIONEndPoint* endPoint);
 
-    // called by UdpSocket.
+    // called by SCIONUdpSocket.
     /**
-     * \brief Send a packet via UDP (IPv4)
+     * \brief Send a packet via UDP over SCION
      * \param packet The packet to send
      * \param saddr The source SCIONAddress
      * \param daddr The destination SCIONAddress
