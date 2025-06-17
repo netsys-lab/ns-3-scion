@@ -156,7 +156,10 @@ class Ia
      */
     Ia(Isd isd, Asn as);
 
-    explicit Ia(Ia_t ia): m_ia(ia){}
+    explicit Ia(Ia_t ia)
+        : m_ia(ia)
+    {
+    }
 
     /** \brief Get the ISD component. */
     Isd GetIsd() const;

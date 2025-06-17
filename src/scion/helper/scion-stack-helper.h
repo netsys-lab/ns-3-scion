@@ -13,10 +13,18 @@
 #include "ns3/point-to-point-helper.h" // For L2 connectivity
 
 // SCION specific includes
+#include "ns3/scion-as-context.h"
 #include "ns3/scion-as-impl.h" // The class we are helping to configure
 
 namespace ns3
 {
+
+// Existing enums and structs
+enum class ScionUnderlay
+{
+    L2_ETHERNET, // Use Ethernet as the underlay
+    L3_IP,       // For IP-based underlay
+};
 
 /**
  * \ingroup scion
@@ -39,33 +47,13 @@ class ScionStackHelper
 
     // --- Configuration for the Helper ---
 
-    /**
-     * \brief Set the PointToPointHelper to use for creating internal L2 links.
-     * \param p2phelper The PointToPointHelper instance.
-     */
-    void SetP2PHelper(PointToPointHelper p2phelper);
-
-    /**
-     * \brief Set the base IP network for intra-AS addressing.
-     * \param network The base IPv4 network (e.g., "10.0.0.0").
-     * \param mask The network mask (e.g., "255.0.0.0").
-     */
-    void SetBaseIp(std::string network, std::string mask);
-
-    /**
-     * \brief Set the IP allocation policy.
-     * \param allocatePerLink If true, allocates a /30 per link. Otherwise, uses a larger AS-wide
-     * subnet.
-     */
-    void SetIpAllocationPolicy(bool allocatePerLink);
-
-    /**
-     * \brief Set the type of minimal internal topology to create if one is not defined by the user.
-     * \param type A string representing the topology ("NONE", "FULL_MESH", "STAR").
-     */
-    void SetInternalTopologyType(std::string type);
-
     // --- Main Installation Methods ---
+
+    /**
+     * \brief Set the underlay intra-AS addressing.
+     * \param type Either L2_ETHERNET or L3_IP for now.
+     **/
+    void SetUnderlayType(ScionUnderlay type);
 
     /**
      * \brief Install the SCION stack and configure a single SCION AS.
@@ -79,6 +67,13 @@ class ScionStackHelper
      * 5. Setup intra-AS IP routing.
      */
     void Install(Ptr<ScionAsImpl> as);
+
+    /**
+     * \brief Generate a SCION AS Context that will be passed to runtime out of the given
+     * ScionAsImpl class
+     * \param as The SCION AS implementation.
+     */
+    Ptr<ScionAsContext> CreateScionAsContext(Ptr<ScionAsImpl> as);
 
     /**
      * \brief Install the IP stack and configure IP addressing/routing on a container of nodes
@@ -108,7 +103,7 @@ class ScionStackHelper
      * \param as The SCION AS to process.
      * \param coreNodes Nodes like BRs and CSs to interconnect.
      */
-    void SetupMinimalInternalTopology(Ptr<ScionAsImpl> as, NodeContainer coreNodes);
+    // void SetupMinimalInternalTopology(Ptr<ScionAsImpl> as, NodeContainer coreNodes);
 
     /**
      * \brief Assign IPv4 addresses to devices within the AS.
@@ -137,6 +132,8 @@ class ScionStackHelper
     };
     InternalTopologyType m_internalTopologyType;
     uint32_t m_nextAsSubnet; // For allocating subnets if not m_allocateIpPerLink
+
+    ScionUnderlay m_underlayType; //!< Underlay type (L2 or L3)
 };
 
 } // namespace ns3

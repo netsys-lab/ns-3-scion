@@ -6,8 +6,9 @@
 #include "ns3/net-device-container.h"
 #include "ns3/node-container.h"
 #include "ns3/object.h"
-#include "ns3/scion-as.h" // For ScionAs (attribute store)
-#include "ns3/scion-ia.h" // For Ia, Isd, As
+#include "ns3/scion-as.h"    // For ScionAs (attribute store)
+#include "ns3/scion-ia.h"    // For Ia, Isd, As
+#include "ns3/scion-types.h" // For ScionLink structure
 
 #include <map>
 #include <set>
@@ -17,36 +18,53 @@
 namespace ns3
 {
 
-// Existing enums and structs
-enum class ScionLinkType
-{
-    CORE,
-    PARENT,
-    CHILD,
-    PEER
-};
-
 struct ScionLink
 {
     // Consider Ptr<NetDevice> localDevice; if you want to tie to a specific device
     Address localAddress;  // Local L3 address on the BR for this link
     Address remoteAddress; // Remote L3 address on the neighbor BR
     uint16_t mtu;
+    uint32_t dateRate; // Data Rate in Bytes / second (Bps)
+    uint16_t delay;    // Delay in MS
     ScionLinkType linkType;
-    uint16_t localInterfaceId;  // SCION Interface ID on our side
-    uint16_t remoteInterfaceId; // SCION Interface ID on remote side
-    Ia remoteIa;                // IA of the remote AS
-    // Ptr<Node> localBorderRouter; // Will be implicitly known via m_borderRouterLinks
+
+    uint16_t localInterfaceId;   // SCION Interface ID on our side
+    uint16_t remoteInterfaceId;  // SCION Interface ID on remote side
+    Ia remoteIa;                 // IA of the remote AS
+    Ptr<Node> localBorderRouter; // Will be implicitly known via m_borderRouterLinks
+    Ptr<Node> remoteBorderRouter;
+
+    uint32_t linkId; // Unique ID for this link
 };
 
-// New enum for node roles
-enum class ScionNodeType
+enum class ScionInterconnectType
 {
-    UNSPECIFIED, // Default or intermediate (e.g. pure switch)
-    BORDER_ROUTER,
-    CONTROL_SERVICE,
-    INTERNAL_ROUTER, // Could also represent a switch
-    HOST
+    CORE,
+    PARENT_CHILD,
+    PEER
+};
+
+struct ScionInterconnect
+{
+    uint16_t mtu;
+    uint32_t dateRate; // Data Rate in Bytes / second (Bps)
+    uint16_t delay;    // Delay in MS
+    ScionInterconnectType linkType;
+
+    Ptr<Node> br1; // Will be implicitly known via m_borderRouterLinks
+    Ptr<Node> br2;
+
+    uint32_t linkId; // Unique ID for this link
+};
+
+struct InternalLink
+{
+    Ptr<Node> nodeA; // One end of the internal link
+    Ptr<Node> nodeB; // The other end of the internal link
+
+    uint16_t mtu;
+    uint32_t dateRate; // Data Rate in Bytes / second (Bps)
+    uint16_t delay;    // Delay in MS
 };
 
 /**
@@ -58,6 +76,7 @@ enum class ScionNodeType
  * representation of the AS-level graph.
  */
 class ScionAsImpl : public Object
+
 {
   public:
     static TypeId GetTypeId(void);
@@ -95,15 +114,16 @@ class ScionAsImpl : public Object
      * \brief Adds an internal link (connection) between two nodes within this AS.
      * \param nodeA One node in the connection.
      * \param nodeB The other node in the connection.
-     * \param deviceA The NetDevice on nodeA used for this link (optional, for reference).
-     * \param deviceB The NetDevice on nodeB used for this link (optional, for reference).
      * \note This represents a Layer 2/3 adjacency. Assumes link is bidirectional.
      *       Stores devices primarily for lookup/debug, not for L3 protocol specifics.
      */
-    void AddInternalLink(Ptr<Node> nodeA,
-                         Ptr<Node> nodeB,
-                         Ptr<NetDevice> deviceA = nullptr,
-                         Ptr<NetDevice> deviceB = nullptr);
+    void AddInternalLink(Ptr<Node> nodeA, Ptr<Node> nodeB);
+
+    /**
+     * \brief This method fills the adjacency list for all nodes in this AS.
+     * All nodes are now direct neighbors of each other.
+     **/
+    void ConnectAllNodes();
 
     /**
      * \brief Get all nodes directly connected to a given internal node.
@@ -118,10 +138,40 @@ class ScionAsImpl : public Object
     /**
      * \brief Add information about an inter-AS SCION link.
      * \param localBorderRouter The local Border Router node that terminates this link.
-     * \param linkInfo The ScionLink structure describing the link.
+     * \param remoteBorderRouter The remote Border Router node that terminates this link.
+     * \param remoteAs The remote AS this link connects to.
+     * \param linkType The SCION link type that matches this link
      * \note Assumes localBorderRouter has already been added with BORDER_ROUTER role.
      */
-    void AddScionLink(Ptr<Node> localBorderRouter, const ScionLink& linkInfo);
+    void AddScionLink(Ptr<Node> localBorderRouter,
+                      Ptr<Node> remoteBorderRouter,
+                      Ptr<ScionAsImpl> remoteAs,
+                      ScionLinkType linkType);
+
+    /**
+     *
+     */
+    void AddScionLink(ScionLink& link);
+
+    /**
+     *
+     */
+    void AddScionInterconnet(ScionInterconnect& link);
+
+    /**
+     * \brief Add information about an inter-AS SCION link.
+     * \param localBorderRouter The local Border Router node that terminates this link.
+     * \param remoteBorderRouter The remote Border Router node that terminates this link.
+     * \param remoteAs The remote AS this link connects to.
+     * \param linkType The SCION link type that matches this link
+     * \param mtu The MTU for this link. Will later be set by the ScionStackHelper
+     * \note Assumes localBorderRouter has already been added with BORDER_ROUTER role.
+     */
+    void AddScionLink(Ptr<Node> localBorderRouter,
+                      Ptr<Node> remoteBorderRouter,
+                      Ptr<ScionAsImpl> remoteAs,
+                      ScionLinkType linkType,
+                      uint32_t mtu);
 
     /**
      * \brief Get all inter-AS links associated with a specific local Border Router.
@@ -136,6 +186,18 @@ class ScionAsImpl : public Object
      * \return A vector containing all ScionLink objects across all BRs.
      */
     std::vector<ScionLink> GetAllScionLinks() const;
+
+    void SetFullMesh(bool isFullMesh);
+    bool IsFullMesh() const;
+
+    void SetFullMeshMtu(uint16_t mtu);
+    uint16_t GetFullMeshMtu() const;
+
+    void SetDefaultDataRate(uint32_t dataRate);
+    uint32_t GetDefaultDataRate() const;
+
+    void SetDefaultDelay(uint16_t delay);
+    uint16_t GetDefaultDelay() const;
 
     // --- Getters for Nodes by Role ---
     NodeContainer GetNodesWithRole(ScionNodeType role) const;
@@ -159,12 +221,21 @@ class ScionAsImpl : public Object
     // Stores internal adjacencies. Key: Node ID, Value: List of connected Node IDs.
     std::map<uint32_t, std::vector<uint32_t>> m_internalAdjacencyList;
 
+    std::vector<InternalLink>
+        m_internalLinks; //!< List of internal links (bidirectional connections).
+
     // Optional: Store devices for internal links if needed for richer topology info
     // std::map<std::pair<uint32_t, uint32_t>, std::pair<Ptr<NetDevice>, Ptr<NetDevice>>>
     // m_internalLinkDevices;
 
     // Maps Border Router Node ID to a list of its inter-AS SCION links.
     std::map<uint32_t, std::vector<ScionLink>> m_borderRouterScionLinks;
+
+    bool m_isFullMesh; //!< True if this AS uses a full mesh for internal links.
+
+    uint16_t m_fullMeshMtu;     //!< MTU for full mesh internal links, if applicable.
+    uint32_t m_defaultDataRate; //!< Default data rate for internal links, if applicable.
+    uint16_t m_defaultDelay;    //!< Default delay for internal links, if applicable.
 };
 
 } // namespace ns3

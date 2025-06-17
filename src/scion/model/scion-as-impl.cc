@@ -125,10 +125,7 @@ ScionAsImpl::GetNodeRole(uint32_t nodeId) const
 
 // --- Topology Management (Internal Connections) ---
 void
-ScionAsImpl::AddInternalLink(Ptr<Node> nodeA,
-                             Ptr<Node> nodeB,
-                             Ptr<NetDevice> deviceA,
-                             Ptr<NetDevice> deviceB)
+ScionAsImpl::AddInternalLink(Ptr<Node> nodeA, Ptr<Node> nodeB)
 {
     NS_ASSERT_MSG(nodeA && nodeB, "Cannot add internal link with null nodes.");
     NS_ASSERT_MSG(nodeA != nodeB, "Cannot add internal link from a node to itself.");
@@ -194,8 +191,29 @@ ScionAsImpl::GetInternalNeighbors(uint32_t nodeId) const
 }
 
 // --- Inter-AS Link Management ---
+
 void
-ScionAsImpl::AddScionLink(Ptr<Node> localBorderRouter, const ScionLink& linkInfo)
+ScionAsImpl::AddScionLink(ScionLink& link)
+{
+    uint32_t brId = link.localBorderRouter->GetId();
+    if (!IsManagedNode(brId) || GetNodeRole(brId) != ScionNodeType::BORDER_ROUTER)
+    {
+        NS_LOG_ERROR(
+            "Node " << brId
+                    << " is not a managed Border Router in this AS. Cannot add SCION link.");
+        // Or, optionally, add/designate it as a BR here if that's desired behavior:
+        // AddNodeWithRole(localBorderRouter, ScionNodeType::BORDER_ROUTER);
+        return;
+    }
+    m_borderRouterScionLinks[brId].push_back(link);
+}
+
+void
+ScionAsImpl::AddScionLink(Ptr<Node> localBorderRouter,
+                          Ptr<Node> remoteBorderRouter,
+                          Ptr<ScionAsImpl> remoteAs,
+                          ScionLinkType linkType,
+                          uint32_t mtu)
 {
     NS_ASSERT_MSG(localBorderRouter, "Local Border Router cannot be null.");
     // NS_LOG_FUNCTION(this << "BR:" << localBorderRouter->GetId()
@@ -211,7 +229,24 @@ ScionAsImpl::AddScionLink(Ptr<Node> localBorderRouter, const ScionLink& linkInfo
         // AddNodeWithRole(localBorderRouter, ScionNodeType::BORDER_ROUTER);
         return;
     }
+
+    // TODO: Addresses are filled later
+    ScionLink linkInfo;
+    linkInfo.remoteIa = remoteAs->GetIa(); // Assuming remoteAs is valid and has IA set
+    linkInfo.linkType = linkType;
+    linkInfo.mtu = mtu; // Set the MTU for this link
+    linkInfo.localBorderRouter = localBorderRouter;
+    linkInfo.remoteBorderRouter = remoteBorderRouter;
     m_borderRouterScionLinks[brId].push_back(linkInfo);
+}
+
+void
+ScionAsImpl::AddScionLink(Ptr<Node> localBorderRouter,
+                          Ptr<Node> remoteBorderRouter,
+                          Ptr<ScionAsImpl> remoteAs,
+                          ScionLinkType linkType)
+{
+    AddScionLink(localBorderRouter, remoteBorderRouter, remoteAs, linkType, DefaultScionMtu);
 }
 
 std::vector<ScionLink>
@@ -254,26 +289,8 @@ ScionAsImpl::GetNodesWithRole(ScionNodeType role) const
         {
             Ptr<Node> node = NodeList::GetNode(pair.first); // Get Ptr<Node> from ID
             if (node)
-            { // Should always be true if ID is valid and node exists
-                // Also ensure it's in our m_allNodes to confirm ownership (optional check)
-                bool foundInAllNodes = false;
-                for (uint32_t i = 0; i < m_allNodes.GetN(); ++i)
-                {
-                    if (m_allNodes.Get(i)->GetId() == pair.first)
-                    {
-                        foundInAllNodes = true;
-                        break;
-                    }
-                }
-                if (foundInAllNodes)
-                {
-                    nodes.Add(node);
-                }
-                else
-                {
-                    NS_LOG_WARN("Node " << pair.first << " has role " << (int)role
-                                        << " but not in m_allNodes.");
-                }
+            {
+                nodes.Add(node);
             }
             else
             {
@@ -315,4 +332,105 @@ ScionAsImpl::GetAllNodes() const
     return m_allNodes;
 }
 
+void
+ScionAsImpl::SetFullMesh(bool isFullMesh)
+{
+    // NS_LOG_FUNCTION(this << isFullMesh);
+    m_isFullMesh = isFullMesh;
+}
+
+bool
+ScionAsImpl::IsFullMesh() const
+{
+    // NS_LOG_FUNCTION(this);
+    return m_isFullMesh;
+}
+
+void
+ScionAsImpl::SetFullMeshMtu(uint16_t mtu)
+{
+    // NS_LOG_FUNCTION(this << mtu);
+    m_fullMeshMtu = mtu;
+}
+
+uint16_t
+ScionAsImpl::GetFullMeshMtu() const
+{
+    // NS_LOG_FUNCTION(this);
+    return m_fullMeshMtu;
+}
+
+void
+ScionAsImpl::SetDefaultDataRate(uint32_t dataRate)
+{
+    // NS_LOG_FUNCTION(this << dataRate);
+    m_defaultDataRate = dataRate;
+}
+
+uint32_t
+ScionAsImpl::GetDefaultDataRate() const
+{
+    // NS_LOG_FUNCTION(this);
+    return m_defaultDataRate;
+}
+
+void
+ScionAsImpl::SetDefaultDelay(uint16_t delay)
+{
+    // NS_LOG_FUNCTION(this << delay);
+    m_defaultDelay = delay;
+}
+
+uint16_t
+ScionAsImpl::GetDefaultDelay() const
+{
+    // NS_LOG_FUNCTION(this);
+    return m_defaultDelay;
+}
+
 } // namespace ns3
+
+/**
+ * void
+ScionAsImpl::AddScionInterconnet(ScionInterconnect& link)
+{
+    ScionLink linkInfo;
+    linkInfo.remoteIa = link.ia2; // Assuming ia2 is the
+
+    Ptr<ScionAs> as = this->GetScionAttributes();
+
+    switch (link.linkType)
+    {
+    case ScionInterconnectType::CORE:
+        linkInfo.linkType = ScionLinkType::CORE;
+        break;
+    case ScionInterconnectType::PARENT_CHILD:
+        if (as->IsCore())
+        {
+            linkInfo.linkType = ScionLinkType::CHILD;
+        }
+        else
+        {
+            linkInfo.linkType = ScionLinkType::PARENT;
+        }
+
+        break;
+    case ScionInterconnectType::PEER:
+        linkInfo.linkType = ScionLinkType::PEER;
+        break;
+    default:
+        NS_LOG_ERROR("Unknown SCION interconnect type.");
+        return; // Invalid type, do not add
+    }
+
+    linkInfo.mtu = link.mtu;
+    linkInfo.dateRate = link.dateRate; // Data Rate in Bytes / second (Bps)
+    linkInfo.delay = link.delay;       // Delay in MS
+    linkInfo.localBorderRouter = link.br1;
+    linkInfo.remoteBorderRouter = link.br2;
+    linkInfo.localInterfaceId = 0; // TODO: Get Interface ID counter
+    linkInfo.linkId = link.linkId;
+
+    this->AddScionLink(linkInfo);
+}
+ */

@@ -41,6 +41,9 @@ class ScionAs : public BaseAs
     Isd GetIsd() const;
     Asn GetAs() const;
 
+    bool IsCore() const;
+    void SetCore(bool core);
+
     uint32_t GetBeaconPolicy() const;
 
   private:

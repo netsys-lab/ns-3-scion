@@ -5,6 +5,7 @@
 #include "ns3/names.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/string.h" // For StringValue
+#include "ns3/topology-helper.h"
 
 namespace ns3
 {
@@ -28,51 +29,127 @@ ScionStackHelper::ScionStackHelper()
 }
 
 void
-ScionStackHelper::SetP2PHelper(PointToPointHelper p2phelper)
-{
-    m_p2pHelper = p2phelper;
-}
-
-/**
- * NEW: Individual setter for the base IP address and mask.
- */
-void
-ScionStackHelper::SetBaseIp(std::string network, std::string mask)
-{
-    m_baseIpNetwork = network;
-    m_baseIpMask = mask;
-}
-
-/**
- * NEW: Individual setter for the IP allocation policy.
- */
-void
-ScionStackHelper::SetIpAllocationPolicy(bool allocatePerLink)
-{
-    m_allocateIpPerLink = allocatePerLink;
-}
-
-void
-ScionStackHelper::SetInternalTopologyType(std::string type)
+ScionStackHelper::SetUnderlayType(ScionUnderlay type)
 {
     // NS_LOG_FUNCTION(this << type);
-    if (type == "NONE")
+    m_underlayType = type;
+}
+
+Ptr<ScionAsContext>
+ScionStackHelper::CreateScionAsContext(Ptr<ScionAsImpl> asImpl)
+{
+    // 1. Create a topology like structure that can be fetched
+    Ptr<ScionAsContext> asContext = CreateObject<ScionAsContext>();
+    ScionAsTopology topology;
+    Ptr<ScionAs> as = asImpl->GetScionAttributes();
+    topology.isdAs = as->GetIa();
+    topology.isCore = as->IsCore();
+    topology.mtu = as->GetMtu();
+
+    // Setup Layer2 addressing, which is the base, we later add IP if desired
+    TopologyHelper topologyHelper;
+    CsmaHelper csma;
+    NetDeviceContainer asDevices;
+    NodeContainer asNodes = asImpl->GetAllNodes();
+
+    // The simple case: we can use a full mesh for internal links
+    if (asImpl->IsFullMesh())
     {
-        m_internalTopologyType = InternalTopologyType::NONE;
+        csma.SetChannelAttribute("DataRate", DataRateValue(DataRate(asImpl->GetDefaultDataRate())));
+        csma.SetChannelAttribute("Delay", TimeValue(MilliSeconds(asImpl->GetDefaultDelay())));
+        csma.SetDeviceAttribute("Mtu", UintegerValue(asImpl->GetFullMeshMtu()));
+
+        // Create a full mesh of internal links
+
+        if (asNodes.GetN() > 0)
+        {
+            asDevices = csma.Install(asNodes);
+
+            // asContext->GetTopology().internalLinks = internalDevices;
+            // asContext->GetTopology().internalInterfaces = internalInterfaces;
+        }
+        else
+        {
+            NS_LOG_WARN("ScionStackHelper: No internal nodes found for full mesh topology.");
+        }
     }
-    else if (type == "FULL_MESH")
+
+    // TODO: We need to setup CSMA and Ethernet links based on the underlay type for SCION Link, too
+
+    // Add all Border Routers
+    // TODO: At which place the addresses will be added? This would be important for the routers
+    // here...
+    // NodeContainer routers = asImpl->GetBorderRouters();
+    NodeContainer::Iterator i;
+
+    // Create topology map for routers
+    topology.borderRouters.clear();
+    uint32_t nodeIndex = 0; // Start router IDs from 1
+
+    for (i = asNodes.Begin(); i != asNodes.End(); ++i)
     {
-        m_internalTopologyType = InternalTopologyType::FULL_MESH;
+        uint32_t id = (*i)->GetId();
+        if (asImpl->GetNodeRole(id) == ScionNodeType::BORDER_ROUTER)
+        {
+            BorderRouterConfig brConfig;
+            // store br- + node name as ID
+            brConfig.id = "br-" + id;
+            brConfig.interfaces.clear();
+            if (m_underlayType == ScionUnderlay::L2_ETHERNET)
+            {
+                Ptr<NetDevice> device = asDevices.Get(nodeIndex);
+                ScionServiceAddress addr;
+                addr.address = device->GetAddress();
+                brConfig.internalAddress = addr; // No port here
+            }
+
+            std::vector<ScionLink> links = asImpl->GetScionLinks(id);
+            if (links.empty())
+            {
+                NS_LOG_WARN("ScionStackHelper: Border Router " << id
+                                                               << " has no SCION links defined.");
+                continue; // Skip BRs with no links
+            }
+
+            // Iterate over all Links and create interfaces
+            for (const auto& link : links)
+            {
+                BorderRouterInterface brInterface;
+                brInterface.mtu = link.mtu;
+                brInterface.remoteIsdAs = link.remoteIa;
+                brInterface.linkToType = link.linkType;
+                brInterface.underlay.publicAddress.address = link.localAddress;
+                brInterface.underlay.publicAddress.port = 0;
+
+                brInterface.underlay.remoteAddress.address = link.remoteAddress;
+                brInterface.underlay.remoteAddress.port = 0;
+
+                brConfig.id = "br-" + std::to_string(id);
+                brConfig.interfaces[link.localInterfaceId] = brInterface;
+
+                // Add the remote BR node to the topology if not already present
+                // TODO: I think we need to ensure that topologies are created before running this
+                // method So basically split everything in two parts:
+                // if (topology.borderRouters.find(link.remoteBorderRouter->GetId()) ==
+                //    topology.borderRouters.end())
+                //{
+                //    BorderRouterConfig remoteBrConfig;
+                //   remoteBrConfig.id = "br-" + std::to_string(link.remoteBorderRouter->GetId());
+                //    remoteBrConfig.internalAddress.address =
+                //        link.remoteBorderRouter->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
+                //    topology.borderRouters[link.remoteBorderRouter->GetId()] = remoteBrConfig;
+                // }
+            }
+
+            // brConfig.internalAddress = as->GetInternalAddress(id);
+            // brConfig.internalAddress.port = as->GetInternalPort(id);
+        }
+
+        nodeIndex++;
     }
-    else if (type == "STAR")
-    {
-        m_internalTopologyType = InternalTopologyType::STAR;
-    }
-    else
-    {
-        NS_LOG_WARN("ScionStackHelper: Unknown InternalTopologyType '" << type
-                                                                       << "'. No change made.");
-    }
+
+    asContext->SetTopology(topology);
+    return asContext;
 }
 
 void
@@ -119,7 +196,7 @@ ScionStackHelper::Install(Ptr<ScionAsImpl> as)
     {
         NS_LOG_INFO("AS " << as->GetIa()
                           << ": Setting up minimal internal topology for core services.");
-        SetupMinimalInternalTopology(as, coreServiceNodes);
+        // SetupMinimalInternalTopology(as, coreServiceNodes);
     }
     else
     {
@@ -177,68 +254,6 @@ ScionStackHelper::ProvisionBorderRouters(Ptr<ScionAsImpl> as)
     {
         NS_LOG_INFO("AS " << as->GetIa() << " has " << links.size() << " SCION link(s) and "
                           << brs.GetN() << " border router(s).");
-    }
-}
-
-void
-ScionStackHelper::SetupMinimalInternalTopology(Ptr<ScionAsImpl> as, NodeContainer coreNodes)
-{
-    // NS_LOG_FUNCTION(this << as->GetIa() << " Core nodes: " << coreNodes.GetN());
-    if (coreNodes.GetN() < 2)
-    {
-        NS_LOG_INFO("Not enough core nodes ("
-                    << coreNodes.GetN() << ") to build internal topology for AS " << as->GetIa());
-        return;
-    }
-
-    NetDeviceContainer internalDevs;
-
-    if (m_internalTopologyType == InternalTopologyType::FULL_MESH)
-    {
-        NS_LOG_INFO("Building FULL_MESH internal topology for AS " << as->GetIa());
-        for (uint32_t i = 0; i < coreNodes.GetN(); ++i)
-        {
-            for (uint32_t j = i + 1; j < coreNodes.GetN(); ++j)
-            {
-                NodeContainer pair;
-                pair.Add(coreNodes.Get(i));
-                pair.Add(coreNodes.Get(j));
-                NetDeviceContainer devices = m_p2pHelper.Install(pair);
-                internalDevs.Add(devices);
-                // Update ScionAsImpl's internal graph
-                as->AddInternalLink(coreNodes.Get(i),
-                                    coreNodes.Get(j),
-                                    devices.Get(0),
-                                    devices.Get(1));
-                NS_LOG_DEBUG("AS " << as->GetIa() << ": Connected " << coreNodes.Get(i)->GetId()
-                                   << " with " << coreNodes.Get(j)->GetId());
-            }
-        }
-    }
-    else if (m_internalTopologyType == InternalTopologyType::STAR)
-    {
-        NS_LOG_INFO("Building STAR internal topology for AS " << as->GetIa());
-        // Requires identifying a central node. For simplicity, pick the first one.
-        // A better approach would be to allow user to specify the star center.
-        Ptr<Node> centerNode = coreNodes.Get(0);
-        NS_LOG_INFO("Using node " << centerNode->GetId() << " as STAR center for AS "
-                                  << as->GetIa());
-        for (uint32_t i = 1; i < coreNodes.GetN(); ++i) // Connect all others to center
-        {
-            NodeContainer pair;
-            pair.Add(centerNode);
-            pair.Add(coreNodes.Get(i));
-            NetDeviceContainer devices = m_p2pHelper.Install(pair);
-            internalDevs.Add(devices);
-            as->AddInternalLink(centerNode, coreNodes.Get(i), devices.Get(0), devices.Get(1));
-            NS_LOG_DEBUG("AS " << as->GetIa() << ": Connected " << centerNode->GetId() << " with "
-                               << coreNodes.Get(i)->GetId());
-        }
-    }
-    // Assign IP addresses to these newly created internal links
-    if (internalDevs.GetN() > 0)
-    {
-        AssignIpAddresses(as, internalDevs);
     }
 }
 
@@ -368,3 +383,113 @@ ScionStackHelper::AssignIpAddresses(Ptr<ScionAsImpl> as, NetDeviceContainer devi
 }
 
 } // namespace ns3
+
+/*
+void
+ScionStackHelper::SetP2PHelper(PointToPointHelper p2phelper)
+{
+    m_p2pHelper = p2phelper;
+}
+
+
+void
+ScionStackHelper::SetBaseIp(std::string network, std::string mask)
+{
+    m_baseIpNetwork = network;
+    m_baseIpMask = mask;
+}
+
+
+void
+ScionStackHelper::SetIpAllocationPolicy(bool allocatePerLink)
+{
+    m_allocateIpPerLink = allocatePerLink;
+}
+
+void
+ScionStackHelper::SetInternalTopologyType(std::string type)
+{
+    // NS_LOG_FUNCTION(this << type);
+    if (type == "NONE")
+    {
+        m_internalTopologyType = InternalTopologyType::NONE;
+    }
+    else if (type == "FULL_MESH")
+    {
+        m_internalTopologyType = InternalTopologyType::FULL_MESH;
+    }
+    else if (type == "STAR")
+    {
+        m_internalTopologyType = InternalTopologyType::STAR;
+    }
+    else
+    {
+        NS_LOG_WARN("ScionStackHelper: Unknown InternalTopologyType '" << type
+                                                                       << "'. No change made.");
+    }
+}
+
+void
+ScionStackHelper::SetupMinimalInternalTopology(Ptr<ScionAsImpl> as, NodeContainer coreNodes)
+{
+    // NS_LOG_FUNCTION(this << as->GetIa() << " Core nodes: " << coreNodes.GetN());
+    if (coreNodes.GetN() < 2)
+    {
+        NS_LOG_INFO("Not enough core nodes ("
+                    << coreNodes.GetN() << ") to build internal topology for AS " << as->GetIa());
+        return;
+    }
+
+    NetDeviceContainer internalDevs;
+
+    if (m_internalTopologyType == InternalTopologyType::FULL_MESH)
+    {
+        NS_LOG_INFO("Building FULL_MESH internal topology for AS " << as->GetIa());
+        for (uint32_t i = 0; i < coreNodes.GetN(); ++i)
+        {
+            for (uint32_t j = i + 1; j < coreNodes.GetN(); ++j)
+            {
+                NodeContainer pair;
+                pair.Add(coreNodes.Get(i));
+                pair.Add(coreNodes.Get(j));
+                NetDeviceContainer devices = m_p2pHelper.Install(pair);
+                internalDevs.Add(devices);
+                // Update ScionAsImpl's internal graph
+                as->AddInternalLink(coreNodes.Get(i),
+                                    coreNodes.Get(j),
+                                    devices.Get(0),
+                                    devices.Get(1));
+                NS_LOG_DEBUG("AS " << as->GetIa() << ": Connected " << coreNodes.Get(i)->GetId()
+                                   << " with " << coreNodes.Get(j)->GetId());
+            }
+        }
+    }
+    else if (m_internalTopologyType == InternalTopologyType::STAR)
+    {
+        NS_LOG_INFO("Building STAR internal topology for AS " << as->GetIa());
+        // Requires identifying a central node. For simplicity, pick the first one.
+        // A better approach would be to allow user to specify the star center.
+        Ptr<Node> centerNode = coreNodes.Get(0);
+        NS_LOG_INFO("Using node " << centerNode->GetId() << " as STAR center for AS "
+                                  << as->GetIa());
+        for (uint32_t i = 1; i < coreNodes.GetN(); ++i) // Connect all others to center
+        {
+            NodeContainer pair;
+            pair.Add(centerNode);
+            pair.Add(coreNodes.Get(i));
+            NetDeviceContainer devices = m_p2pHelper.Install(pair);
+            internalDevs.Add(devices);
+            as->AddInternalLink(centerNode, coreNodes.Get(i), devices.Get(0), devices.Get(1));
+            NS_LOG_DEBUG("AS " << as->GetIa() << ": Connected " << centerNode->GetId() << " with "
+                               << coreNodes.Get(i)->GetId());
+        }
+    }
+    // Assign IP addresses to these newly created internal links
+    if (internalDevs.GetN() > 0)
+    {
+        AssignIpAddresses(as, internalDevs);
+    }
+}
+
+
+    */

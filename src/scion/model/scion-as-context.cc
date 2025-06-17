@@ -1,7 +1,7 @@
-#include "ns3/scion-as.h"
+#include "ns3/scion-as-context.h"
 
 #include "ns3/abort.h"
-#include "ns3/attribute-accessor-helper.h" // <--- ADD THIS LINE
+#include "ns3/attribute-accessor-helper.h"
 #include "ns3/log.h"
 
 namespace ns3
@@ -10,13 +10,12 @@ namespace ns3
 // --- ScionAs Implementation ---
 
 TypeId
-ScionAs::GetTypeId(void)
+ScionAsContext::GetTypeId(void)
 {
     static TypeId tid =
-        TypeId("ns3::ScionAs")
-            .SetParent<BaseAs>() // Set appropriate parent
+        TypeId("ns3::ScionAsContext")
             .SetGroupName("Scion")
-            .AddConstructor<ScionAs>()
+            .AddConstructor<ScionAsContext>()
             //.AddAttribute("Ia", // Use the Ia class
             //              "The ISD-AS identifier (e.g., '1-ffaa:1:2').",
             // Initial value: Default Ia (0-0)
@@ -29,98 +28,89 @@ ScionAs::GetTypeId(void)
             .AddAttribute("BeaconPolicy",
                           "Identifier for the beaconing policy used by this AS.",
                           UintegerValue(0), // Default value 0
-                          MakeUintegerAccessor(&ScionAs::m_beaconPolicy),
+                          MakeUintegerAccessor(&ScionAsContext::m_beaconPolicy),
                           MakeUintegerChecker<uint32_t>());
     return tid;
 }
 
 TypeId
-ScionAs::GetInstanceTypeId(void) const
+ScionAsContext::GetInstanceTypeId(void) const
 {
     return GetTypeId();
 }
 
-ScionAs::ScionAs()
-    : m_ia(), // Default construct Ia (0-0)
-      m_beaconPolicy(0)
+ScionAsContext::ScionAsContext()
+    : m_beaconPolicy(0),
+      m_topology()
 {
     NS_LOG_FUNCTION(this);
-    SetAsn(m_ia.GetAsn().GetValue()); // Synchronize BaseAs AS number
 }
 
-ScionAs::~ScionAs()
+ScionAsContext::~ScionAsContext()
 {
     NS_LOG_FUNCTION(this);
 }
 
 void
-ScionAs::DoDispose(void)
+ScionAsContext::DoDispose(void)
 {
     NS_LOG_FUNCTION(this);
     // Clean up resources if any
-    BaseAs::DoDispose(); // Call parent class Dispose
 }
 
 void
-ScionAs::SetIsCore(bool isCore)
+ScionAsContext::SetIsCore(bool isCore)
 {
     NS_LOG_FUNCTION(this << isCore);
-    m_isCore = isCore;
+    m_topology.isCore = isCore;
 }
 
 void
-ScionAs::SetIa(const Ia& ia)
+ScionAsContext::SetTopology(ScionAsTopology topology)
+{
+    m_topology = topology;
+}
+
+void
+ScionAsContext::SetIa(const Ia& ia)
 {
     NS_LOG_FUNCTION(this << ia);
-    m_ia = ia;
-    SetAsn(ia.GetAsn().GetValue()); // Synchronize BaseAs AS number
+    m_topology.isdAs = ia;
 }
 
 void
-ScionAs::SetCore(bool isCore)
-{
-    m_isCore = isCore;
-}
-
-bool
-ScionAs::IsCore() const
-{
-    return m_isCore;
-}
-
-void
-ScionAs::SetBeaconPolicy(uint32_t policy)
+ScionAsContext::SetBeaconPolicy(uint32_t policy)
 {
     NS_LOG_FUNCTION(this << policy);
     m_beaconPolicy = policy;
 }
 
 const Ia&
-ScionAs::GetIa() const
+ScionAsContext::GetIa() const
 {
     NS_LOG_FUNCTION(this);
-    return m_ia;
+    return m_topology.isdAs;
 }
 
 uint32_t
-ScionAs::GetBeaconPolicy() const
+ScionAsContext::GetBeaconPolicy() const
 {
     NS_LOG_FUNCTION(this);
     return m_beaconPolicy;
 }
 
 Isd
-ScionAs::GetIsd() const
+ScionAsContext::GetIsd() const
 {
     NS_LOG_FUNCTION(this);
-    return m_ia.GetIsd();
+    return m_topology.isdAs.GetIsd();
 }
 
 Asn
-ScionAs::GetAs() const
+ScionAsContext::GetAs() const
 {
     NS_LOG_FUNCTION(this);
-    return m_ia.GetAsn();
+    return m_topology.isdAs.GetAsn();
 }
 
 } // namespace ns3
