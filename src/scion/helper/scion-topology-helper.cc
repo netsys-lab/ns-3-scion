@@ -53,6 +53,88 @@ ScionTopologyHelper::InstallInternalTopology(Ptr<ScionAsImpl> asImpl)
 void
 ScionTopologyHelper::InstallInterConnects(Ptr<ScionAsImpl> asImpl)
 {
+    NodeContainer routers = asImpl->GetBorderRouters();
+    std::vector<ScionLink> links = asImpl->GetAllScionLinks();
+
+    NodeContainer::Iterator i;
+
+    for (i = routers.Begin(); i != routers.End(); ++i)
+    {
+        for (const auto& link : links)
+        {
+            // Assume links are in order
+            if (link.localBorderRouter == *i)
+            {
+                // Install the interconnect device on this route
+                Ptr<PointToPointNetDevice> device = (*i)->GetDevice(link.localInterfaceId);
+                Ptr<Channel> channel = device->GetChannel();
+                Ptr<PointToPointNetDevice> remoteDevice =
+                    link.remoteBorderRouter->GetDevice(link.remoteInterfaceId);
+
+                if (device && remoteDevice)
+                {
+                    // If we dont have a channel yet, we setup both ends
+                    // Otherwise, this router interface is already set up
+                    if (!channel)
+                    {
+                        if (m_interconnectUnderlayType == ScionUnderlay::L2_ETHERNET)
+                        {
+                            device->SetAddress(Mac48Address::Allocate());
+                            remoteDevice->SetAddress(Mac48Address::Allocate());
+
+                            Ptr<PointToPointChannel> chan = CreateObject<PointToPointChannel>();
+                            chan->SetAttribute("Delay", TimeValue(MilliSeconds(link.delay)));
+                            chan->SetAttribute("DataRate", DataRateValue(DataRate(link.dateRate)));
+                            chan->SetAttribute("Mtu", UintegerValue(link.mtu));
+
+                            chan->Attach(device);
+                            chan->Attach(remoteDevice);
+                        }
+                        else
+                        {
+                            NS_LOG_ERROR(
+                                "Unsupported interconnect underlay type for link: " << link.linkId);
+                        }
+                    }
+                }
+                else
+                {
+                    NS_LOG_ERROR("Missing device or remote device. Failed to install interconnect "
+                                 "device for link: "
+                                 << link.linkId);
+                }
+            }
+        }
+    }
+}
+
+void
+ScionTopologyHelper::InstallInterConnectDevices(Ptr<ScionAsImpl> asImpl)
+{
+    NodeContainer routers = asImpl->GetBorderRouters();
+    std::vector<ScionLink> links = asImpl->GetAllScionLinks();
+
+    NodeContainer::Iterator i;
+
+    for (i = routers.Begin(); i != routers.End(); ++i)
+    {
+        for (const auto& link : links)
+        {
+            if (link.localBorderRouter == *i)
+            {
+                // Install the interconnect device on this route
+                Ptr<PointToPointNetDevice> device = CreateObject<PointToPointNetDevice>();
+                if (device)
+                {
+                    (*i)->AddDevice(device);
+                }
+                else
+                {
+                    NS_LOG_ERROR("Failed to install interconnect device for link: " << link.linkId);
+                }
+            }
+        }
+    }
 }
 
 void
@@ -68,6 +150,12 @@ ScionTopologyHelper::InstallAllInternalTopology(std::vector<Ptr<ScionAsImpl>> as
 void
 ScionTopologyHelper::InstallAllInterconnects(std::vector<Ptr<ScionAsImpl>> asImpls)
 {
+    for (auto& asImpl : asImpls)
+    {
+        // Install SCION Link Underlays for each AS
+        InstallInterConnectDevices(asImpl);
+    }
+
     for (auto& asImpl : asImpls)
     {
         // Install SCION Link Underlays for each AS

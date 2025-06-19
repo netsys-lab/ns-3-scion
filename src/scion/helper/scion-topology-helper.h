@@ -8,6 +8,7 @@
 #include "ns3/net-device-container.h"
 #include "ns3/node-container.h"
 #include "ns3/point-to-point-helper.h"
+#include "ns3/point-to-point-module.h"
 #include "ns3/scion-as-impl.h" // For ScionAsImpl class
 #include "ns3/topology-helper.h"
 
@@ -36,6 +37,7 @@ class ScionTopologyHelper
 
     void InstallInternalTopology(Ptr<ScionAsImpl> asImpl);
     void InstallInterConnects(Ptr<ScionAsImpl> asImpl);
+    void InstallInterConnectDevices(Ptr<ScionAsImpl> asImpl);
 
     void InstallAllInterconnects(std::vector<Ptr<ScionAsImpl>> asImpls);
     void InstallAllInternalTopology(std::vector<Ptr<ScionAsImpl>> asImpls);
@@ -64,7 +66,7 @@ class ScionTopologyHelper
     ScionUnderlay m_interconnectUnderlayType; //!< Underlay type (L2 or L3)
 
     std::vector<Ptr<ScionAsImpl>> m_allAs; //!< All ASes created by this helper
-    uint64_t m_nextLinkId = 0; //!< Unique ID for interconnect links
+    uint64_t m_nextLinkId = 1;             //!< Unique ID for interconnect links
 };
 
 } // namespace ns3
