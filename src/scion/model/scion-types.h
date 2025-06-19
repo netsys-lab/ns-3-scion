@@ -16,6 +16,15 @@
 
 namespace ns3
 {
+
+//
+enum class ScionUnderlay
+{
+    L2_ETHERNET, // Use Ethernet as the underlay
+    L3_IPv4,     // For IPv4-based underlay
+    L3_IPv6,     // For IPv4-based underlay
+};
+
 // IA represents the ISD (ISolation Domain) and AS (Autonomous System) Id of a given SCION AS.
 // The highest 16 bit form the ISD number and the lower 48 bits form the AS number.
 using Ia_t = uint64_t;

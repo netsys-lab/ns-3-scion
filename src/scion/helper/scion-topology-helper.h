@@ -34,13 +34,37 @@ class ScionTopologyHelper
      */
     void SetTopologyHelper(TopologyHelper topoHelper);
 
+    void InstallInternalTopology(Ptr<ScionAsImpl> asImpl);
+    void InstallInterConnects(Ptr<ScionAsImpl> asImpl);
+
+    void InstallAllInterconnects(std::vector<Ptr<ScionAsImpl>> asImpls);
+    void InstallAllInternalTopology(std::vector<Ptr<ScionAsImpl>> asImpls);
+
+    Ptr<ScionAsImpl> AddAs(Ia ia, bool isCore = false);
+    Ptr<Node> AddBorderRouter(Ptr<ScionAsImpl> as);
+    Ptr<Node> AddControlService(Ptr<ScionAsImpl> as);
+    Ptr<Node> AddEndhost(Ptr<ScionAsImpl> as);
+
+    void SetAsInternalUnderlayType(ScionUnderlay type);
+    void SetInterconnectUnderlayType(ScionUnderlay type);
+
+    std::vector<Ptr<ScionAsImpl>> GetAllAs() const
+    {
+        return m_allAs;
+    }
+
     /**
      *
      */
     void AddScionInterconnect(Ptr<ScionAsImpl> as1, Ptr<ScionAsImpl> as2, ScionInterconnect link);
 
   private:
-    TopologyHelper m_topoHelper; //!< Helper for Underlay links.
+    TopologyHelper m_topoHelper;              //!< Helper for Underlay links.
+    ScionUnderlay m_internalUnderlayType;     //!< Underlay type (L2 or L3)
+    ScionUnderlay m_interconnectUnderlayType; //!< Underlay type (L2 or L3)
+
+    std::vector<Ptr<ScionAsImpl>> m_allAs; //!< All ASes created by this helper
+    uint64_t m_nextLinkId = 0; //!< Unique ID for interconnect links
 };
 
 } // namespace ns3

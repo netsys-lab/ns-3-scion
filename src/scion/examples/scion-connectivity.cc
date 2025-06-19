@@ -44,7 +44,58 @@ using namespace ns3;
 int
 main(int argc, char* argv[])
 {
-    Ptr<ScionAsImpl> as1 = CreateObject<ScionAsImpl>();
+    ScionTopologyHelper scionTopoHelper;
+    // We only use L2 Ethernet for now
+    scionTopoHelper.SetAsInternalUnderlayType(ScionUnderlay::L2_ETHERNET);
+    scionTopoHelper.SetInterconnectUnderlayType(ScionUnderlay::L2_ETHERNET);
+
+    // Maybe simplify further:
+    Ptr<ScionAsImpl> as1 = scionTopoHelper.AddAs(Ia(Isd(1), Asn(1)), true);
+    Ptr<Node> as1Br1 = scionTopoHelper.AddBorderRouter(as1);
+    scionTopoHelper.AddControlService(as1);
+
+    Ptr<ScionAsImpl> as2 = scionTopoHelper.AddAs(Ia(Isd(1), Asn(2)), false);
+    Ptr<Node> as1Br2 = scionTopoHelper.AddBorderRouter(as2);
+    scionTopoHelper.AddControlService(as2);
+
+    // Full Mesh Internal Topology
+    as1->ConnectAllNodes();
+    as2->ConnectAllNodes();
+
+    // TODO: Addresses are filled later
+    ScionInterconnect scionLink;
+    // scionLink.underlay = ScionInterconnectUnderlay::L2_ETHERNET; Obtained from the helper
+    scionLink.linkType = ScionInterconnectType::PARENT_CHILD; // Example link type
+    scionLink.mtu = 1500;                                     // Set the MTU for this link
+    scionLink.br1 = as1Br1;                                   // Local Border Router
+    scionLink.br2 = as1Br2;                                   // Remote Border Router
+    scionLink.dateRate = 1000000;                             // Example data rate in Bps (1 Mbps)
+    scionLink.delay = 10;                                     // Example delay in ms
+
+    // 2. Adding the interconnect between AS1 and AS2
+    scionTopoHelper.AddScionInterconnect(as1, as2, scionLink);
+
+    // Installation
+    std::vector<Ptr<ScionAsImpl>> allAs = scionTopoHelper.GetAllAs();
+
+    // 1. Installing the topology
+    scionTopoHelper.InstallAllInternalTopology(allAs);
+
+    // 2. Installing interconnects
+    scionTopoHelper.InstallAllInterconnects(allAs);
+
+    // 3. Installing SCION stack on all nodes
+    ScionStackHelper scionStackHelper;
+    // scionStackHelper.SetUnderlayType(ScionUnderlay::L2_ETHERNET); // TODO: Maybe this could be
+    // inferred? Maybe we also don't need this at all, since the underlay is already set in
+    scionStackHelper.InstallAll(allAs);
+
+    return 0;
+}
+
+/*
+Verbose code samples:
+Ptr<ScionAsImpl> as1 = CreateObject<ScionAsImpl>();
     Ptr<ScionAsImpl> as2 = CreateObject<ScionAsImpl>();
 
     // Configure AS1
@@ -86,42 +137,4 @@ main(int argc, char* argv[])
     as1->ConnectAllNodes();
     as2->ConnectAllNodes();
 
-    // TODO: We need to obtain local and remote addresses dynamically or configure them
-    // TODO: We need to assign interface IDs automatically
-    // TODO: The SCION Stack Helper should install and configure BRs and CSes itself
-    // link1.remoteIa = as2->GetIa();
-    // link1.linkType = ScionLinkType::CHILD;
-
-    // This method will add the inter-AS link information depending on the AS configraution
-    // TODO: To keep it understandable, do we want to do this on both ASes ot only only once?
-
-    // TODO: Addresses are filled later
-    ScionInterconnect scionLink;
-    scionLink.linkId = 1; // Unique ID for this link, can be auto-generated or set manually
-    scionLink.linkType = ScionInterconnectType::PARENT_CHILD; // Example link type
-    scionLink.mtu = 1500;                                     // Set the MTU for this link
-    scionLink.br1 = br1;                                      // Local Border Router
-    scionLink.br2 = br2;                                      // Remote Border Router
-    scionLink.dateRate = 1000000;                             // Example data rate in Bps (1 Mbps)
-    scionLink.delay = 10;                                     // Example delay in ms
-
-    ScionTopologyHelper scionTopoHelper;
-    scionTopoHelper.AddScionInterconnect(as1, as2, scionLink);
-
-    // as1->AddScionInterconnet(scionLink);
-    // as2->AddScionInterconnet(scionLink);
-
-    // as1->AddScionLink(br1, br2, as2, ScionLinkType::CHILD);
-    // as2->AddScionLink(br2, br1, as1, ScionLinkType::PARENT);
-
-    // This should be done by scionStackHelper
-    // Connect Border Routers physically via point-to-point link
-
-    // This is not done here, but maybe internally. Or we remove this.
-    // Absolutely "dont-care" mode
-    // ScionTopologyHelper scionTopoHelper;
-    // Setup connection between AS1 and AS2 Border Routers
-    // scionTopoHelper.CrossConnect(as1, br1, as2, br2);
-
-    return 0;
-}
+*/

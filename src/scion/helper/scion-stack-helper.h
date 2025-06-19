@@ -19,13 +19,6 @@
 namespace ns3
 {
 
-// Existing enums and structs
-enum class ScionUnderlay
-{
-    L2_ETHERNET, // Use Ethernet as the underlay
-    L3_IP,       // For IP-based underlay
-};
-
 /**
  * \ingroup scion
  * \brief Helper to install and configure the SCION stack on ASes and their nodes.
@@ -60,13 +53,16 @@ class ScionStackHelper
      * \param as The SCION AS implementation to configure.
      *
      * This method will:
-     * 1. Ensure necessary BR nodes exist (or create them if policy allows).
-     * 2. Setup minimal internal L2 connectivity if not already present.
-     * 3. Install IP stack on all AS nodes.
-     * 4. Assign IP addresses.
-     * 5. Setup intra-AS IP routing.
+     * 1. Generate a SCION AS Context for the AS and installs it on all the nodes.
      */
     void Install(Ptr<ScionAsImpl> as);
+
+    /**
+     * \brief Install the SCION stack and configure all SCION ASes.
+     * \param ases A vector with all the SCION ASes.
+     *
+     */
+    void InstallAll(std::vector<Ptr<ScionAsImpl>> as);
 
     /**
      * \brief Generate a SCION AS Context that will be passed to runtime out of the given
@@ -75,65 +71,10 @@ class ScionStackHelper
      */
     Ptr<ScionAsContext> CreateScionAsContext(Ptr<ScionAsImpl> as);
 
-    /**
-     * \brief Install the IP stack and configure IP addressing/routing on a container of nodes
-     *        belonging to a single AS.
-     * \param as The SCION AS these nodes belong to (for context, e.g., IA).
-     * \param nodes The nodes to install the IP stack on.
-     *
-     * This is a lower-level method, typically called by Install(Ptr<ScionAsImpl>).
-     */
-    void InstallIpStack(Ptr<ScionAsImpl> as, NodeContainer nodes);
-
   private:
-    /**
-     * \brief Ensure Border Router nodes exist for defined SCION links.
-     *
-     * If a ScionLink exists but the designated local BR node is not yet
-     * part of the AS or not marked as a BR, this method can (based on policy,
-     * TBD) create a new node or designate an existing one.
-     * For now, it mainly verifies.
-     * \param as The SCION AS to process.
-     */
-    void ProvisionBorderRouters(Ptr<ScionAsImpl> as);
+        ScionUnderlay m_underlayType; //!< Underlay type (L2 or L3)
 
-    /**
-     * \brief Create a minimal internal L2 topology if none is explicitly defined.
-     * Connects BRs and CSs in a specified topology (e.g., full mesh).
-     * \param as The SCION AS to process.
-     * \param coreNodes Nodes like BRs and CSs to interconnect.
-     */
-    // void SetupMinimalInternalTopology(Ptr<ScionAsImpl> as, NodeContainer coreNodes);
-
-    /**
-     * \brief Assign IPv4 addresses to devices within the AS.
-     * \param as The SCION AS.
-     * \param devices The NetDeviceContainer of internal links to address.
-     * \return The Ipv4InterfaceContainer for the addressed devices.
-     */
-    Ipv4InterfaceContainer AssignIpAddresses(Ptr<ScionAsImpl> as, NetDeviceContainer devices);
-
-    PointToPointHelper m_p2pHelper;                //!< Helper for creating P2P links.
-    InternetStackHelper m_stackInstaller;          //!< Helper to install TCP/IP stack.
-    Ipv4AddressHelper m_ipv4AddressHelper;         //!< Helper for assigning IPv4 addresses.
-    Ipv4StaticRoutingHelper m_staticRoutingHelper; //!< For basic static routes
-    Ipv4ListRoutingHelper m_listRoutingHelper;     //!< For more complex routing, can add
-    // static/global
-
-    // Configuration for internal topology and addressing
-    std::string m_baseIpNetwork;
-    std::string m_baseIpMask;
-    bool m_allocateIpPerLink; // True: /30 per link, False: larger AS subnet
-    enum class InternalTopologyType
-    {
-        NONE, // User provides all internal links
-        FULL_MESH,
-        STAR // Needs a central node designation
-    };
-    InternalTopologyType m_internalTopologyType;
-    uint32_t m_nextAsSubnet; // For allocating subnets if not m_allocateIpPerLink
-
-    ScionUnderlay m_underlayType; //!< Underlay type (L2 or L3)
+    // TODO: Keep a map of which remote BRs have already been provisioned with inter-domain links
 };
 
 } // namespace ns3

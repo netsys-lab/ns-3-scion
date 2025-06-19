@@ -33,8 +33,10 @@ struct ScionLink
     Ia remoteIa;                 // IA of the remote AS
     Ptr<Node> localBorderRouter; // Will be implicitly known via m_borderRouterLinks
     Ptr<Node> remoteBorderRouter;
+    ScionInterconnectUnderlay underlay;
 
     uint32_t linkId; // Unique ID for this link
+    
 };
 
 enum class ScionInterconnectType
@@ -44,12 +46,20 @@ enum class ScionInterconnectType
     PEER
 };
 
+enum class ScionInterconnectUnderlay
+{
+    L2_ETHERNET,
+    L3_IPv4,
+    L3_IPv6,
+};
+
 struct ScionInterconnect
 {
     uint16_t mtu;
     uint32_t dateRate; // Data Rate in Bytes / second (Bps)
     uint16_t delay;    // Delay in MS
     ScionInterconnectType linkType;
+    ScionInterconnectUnderlay underlay;
 
     Ptr<Node> br1; // Will be implicitly known via m_borderRouterLinks
     Ptr<Node> br2;
@@ -65,6 +75,7 @@ struct InternalLink
     uint16_t mtu;
     uint32_t dateRate; // Data Rate in Bytes / second (Bps)
     uint16_t delay;    // Delay in MS
+
 };
 
 /**
