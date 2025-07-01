@@ -11,6 +11,7 @@ build_lib(
     model/scion-l3-protocol.cc
     model/scion-node.cc
     model/scion-path.cc
+    model/scion-route.cc
     model/scion-socket-address.cc
     model/scion.cc
     model/scmp/scmp-destination-unreachable.cc
@@ -34,6 +35,7 @@ build_lib(
     model/scion-l3-protocol.h
     model/scion-node.h
     model/scion-path.h
+    model/scion-route.h
     model/scion-socket-address.h
     model/scion-types.h
     model/scion.h

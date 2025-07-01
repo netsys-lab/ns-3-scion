@@ -103,7 +103,7 @@ SCIONL3Protocol::~SCIONL3Protocol()
 }
 
 void
-SCIONL3Protocol::Insert(Ptr<IpL4Protocol> protocol)
+SCIONL3Protocol::Insert(Ptr<SCIONL4Protocol> protocol)
 {
     NS_LOG_FUNCTION(this << protocol);
     L4ListKey_t key = std::make_pair(protocol->GetProtocolNumber(), -1);
@@ -115,7 +115,7 @@ SCIONL3Protocol::Insert(Ptr<IpL4Protocol> protocol)
 }
 
 void
-SCIONL3Protocol::Insert(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
+SCIONL3Protocol::Insert(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex)
 {
     NS_LOG_FUNCTION(this << protocol << interfaceIndex);
 
@@ -129,7 +129,7 @@ SCIONL3Protocol::Insert(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
 }
 
 void
-SCIONL3Protocol::Remove(Ptr<IpL4Protocol> protocol)
+SCIONL3Protocol::Remove(Ptr<SCIONL4Protocol> protocol)
 {
     NS_LOG_FUNCTION(this << protocol);
 
@@ -147,7 +147,7 @@ SCIONL3Protocol::Remove(Ptr<IpL4Protocol> protocol)
 }
 
 void
-SCIONL3Protocol::Remove(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
+SCIONL3Protocol::Remove(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex)
 {
     NS_LOG_FUNCTION(this << protocol << interfaceIndex);
 
@@ -165,7 +165,7 @@ SCIONL3Protocol::Remove(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
     }
 }
 
-Ptr<IpL4Protocol>
+Ptr<SCIONL4Protocol>
 SCIONL3Protocol::GetProtocol(int protocolNumber) const
 {
     NS_LOG_FUNCTION(this << protocolNumber);
@@ -173,7 +173,7 @@ SCIONL3Protocol::GetProtocol(int protocolNumber) const
     return GetProtocol(protocolNumber, -1);
 }
 
-Ptr<IpL4Protocol>
+Ptr<SCIONL4Protocol>
 SCIONL3Protocol::GetProtocol(int protocolNumber, int32_t interfaceIndex) const
 {
     NS_LOG_FUNCTION(this << protocolNumber << interfaceIndex);
@@ -252,7 +252,7 @@ SCIONL3Protocol::NotifyNewAggregate()
             this->SetNode(node);
         }
     }
-    Ipv4::NotifyNewAggregate();
+    SCION::NotifyNewAggregate();
 }
 
 
@@ -453,6 +453,10 @@ SCIONL3Protocol::GetInterfaceForDevice(Ptr<const NetDevice> device) const
     return -1;
 }
 
+/**
+ * \brief check if a packet with the given destination address 
+ *      is meant for delivery(up the stack) on the local node
+ */
 bool
 SCIONL3Protocol::IsDestinationAddress(SCIONAddress address, uint32_t iif) const
 {
@@ -503,18 +507,20 @@ SCIONL3Protocol::IsDestinationAddress(SCIONAddress address, uint32_t iif) const
             for (uint32_t i = 0; i < GetNAddresses(j); i++)
             {
                 SCIONInterfaceAddress iaddr = GetAddress(j, i);
-                if (address == iaddr.GetLocal())
+                if (address == iaddr.GetAddress())
                 {
                     NS_LOG_LOGIC("For me (destination " << address
                                                         << " match) on another interface");
                     return true;
                 }
+                /*
                 //  This is a small corner case:  match another interface's broadcast address
                 if (address == iaddr.GetBroadcast())
                 {
                     NS_LOG_LOGIC("For me (interface broadcast address on another interface)");
                     return true;
                 }
+                */
             }
         }
     }
@@ -566,6 +572,8 @@ SCIONL3Protocol::Receive(Ptr<NetDevice> device,
         packet->RemoveAtEnd(packet->GetSize() - ipHeader.GetPayloadSize());
     }
 
+    /*
+    // SCION header has no checksum
     if (!ipHeader.IsChecksumOk())
     {
         NS_LOG_LOGIC("Dropping received packet -- checksum not ok");
@@ -602,11 +610,12 @@ SCIONL3Protocol::Receive(Ptr<NetDevice> device,
             }
         }
     }
+    */
 
     for (SocketList::iterator i = m_sockets.begin(); i != m_sockets.end(); ++i)
     {
         NS_LOG_LOGIC("Forwarding to raw socket");
-        Ptr<Ipv4RawSocketImpl> socket = *i;
+        Ptr<SCIONRawSocketImpl> socket = *i;
         socket->ForwardUp(packet, ipHeader, SCIONInterface);
     }
 
@@ -620,9 +629,7 @@ SCIONL3Protocol::Receive(Ptr<NetDevice> device,
     NS_ASSERT_MSG(m_routingProtocol, "Need a routing protocol object to process packets");
     if (!m_routingProtocol->RouteInput(packet,
                                        ipHeader,
-                                       device,
-                                       MakeCallback(&SCIONL3Protocol::IpForward, this),
-                                       MakeCallback(&SCIONL3Protocol::IpMulticastForward, this),
+                                       device,                                     
                                        MakeCallback(&SCIONL3Protocol::LocalDeliver, this),
                                        MakeCallback(&SCIONL3Protocol::RouteInputError, this)))
     {
@@ -635,7 +642,7 @@ Ptr<ScmpL4Protocol>
 SCIONL3Protocol::GetScmp() const
 {
     NS_LOG_FUNCTION(this);
-    Ptr<IpL4Protocol> prot = GetProtocol(ScmpL4Protocol::GetStaticProtocolNumber());
+    Ptr<SCIONL4Protocol> prot = GetProtocol(ScmpL4Protocol::GetStaticProtocolNumber());
     if (prot)
     {
         return prot->GetObject<ScmpL4Protocol>();
@@ -647,7 +654,7 @@ SCIONL3Protocol::GetScmp() const
 }
 
 void
-SCIONL3Protocol::SendWithHeader(Ptr<Packet> packet, SCIONHeader ipHeader, Ptr<Ipv4Route> route)
+SCIONL3Protocol::SendWithHeader(Ptr<Packet> packet, SCIONHeader ipHeader, Ptr<SCIONRoute> route)
 {
     NS_LOG_FUNCTION(this << packet << ipHeader << route);
     if (Node::ChecksumEnabled())
@@ -660,7 +667,7 @@ SCIONL3Protocol::SendWithHeader(Ptr<Packet> packet, SCIONHeader ipHeader, Ptr<Ip
 void
 SCIONL3Protocol::CallTxTrace(const SCIONHeader& ipHeader,
                             Ptr<Packet> packet,
-                            Ptr<Ipv4> ipv4,
+                            Ptr<SCION> ipv4,
                             uint32_t interface)
 {
     if (!m_txTrace.IsEmpty())
@@ -671,28 +678,60 @@ SCIONL3Protocol::CallTxTrace(const SCIONHeader& ipHeader,
     }
 }
 
+/**
+ * i.e. called directly by SCIONRawSockets. In this case the route will contain the socket's boundNetDevice as outputDevice,
+ *      as well as src and dst addresses (listen/bind address of socket and  either connect/peer address or argument to Socket::SendTo() )
+ *     The gateway is set to 0.0.0.0 Any
+ * 
+ * if called by L4 protocols i.e. UDP the route will be either null or the delegated route argument, 
+ * depending on which Send() overload has been called by UdpSocket.
+    * \brief Send a packet via UDP (IPv4)
+     * \param packet The packet to send
+     * \param saddr The source Ipv4Address
+     * \param daddr The destination Ipv4Address
+     * \param sport The source port number
+     * \param dport The destination port number
+     *
+    void Send(Ptr<Packet> packet,
+              Ipv4Address saddr,
+              Ipv4Address daddr,
+              uint16_t sport,
+              uint16_t dport);  // nullptr route
+     OR: 
+     * \brief Send a packet via UDP (IPv4)
+     * \param packet The packet to send
+     * \param saddr The source Ipv4Address
+     * \param daddr The destination Ipv4Address
+     * \param sport The source port number
+     * \param dport The destination port number
+     * \param route The route
+     *
+    void Send(Ptr<Packet> packet,
+              Ipv4Address saddr,
+              Ipv4Address daddr,
+              uint16_t sport,
+              uint16_t dport,
+              Ptr<Ipv4Route> route);
+
+ if the UDPSocket is bound to a listen address, then source address is known, and route can be omitted (be nullptr).
+ Otherwise the UDPL4SocketImpl retrieves the routingProtocol from the Ipv4L3 protocol of the node
+ and computes the route for the given destination address.
+ It provides as input to RoutingProtocol::RouteOutput() the packet, scion header,
+  and output netDevice (the device the socket is bound to[might be null if Socket::BindToNetDevice hasn't been called explicitly])
+ */
 void
 SCIONL3Protocol::Send(Ptr<Packet> packet,
                      SCIONAddress source,
                      SCIONAddress destination,
                      uint8_t protocol,
-                     Ptr<Ipv4Route> route)
+                     Ptr<SCIONRoute> route)
 {
     NS_LOG_FUNCTION(this << packet << source << destination << uint32_t(protocol) << route);
-
-    bool mayFragment = true;
 
     // we need a copy of the packet with its tags in case we need to invoke recursion.
     Ptr<Packet> pktCopyWithTags = packet->Copy();
 
-    uint8_t ttl = m_defaultTtl;
-    SocketIpTtlTag ipTtlTag;
-    bool ipTtlTagFound = packet->RemovePacketTag(ipTtlTag);
-    if (ipTtlTagFound)
-    {
-        ttl = ipTtlTag.GetTtl();
-    }
-
+   
     uint8_t tos = 0;
     SocketIpTosTag ipTosTag;
     bool ipTosTagFound = packet->RemovePacketTag(ipTosTag);
@@ -703,14 +742,13 @@ SCIONL3Protocol::Send(Ptr<Packet> packet,
 
     // can construct the header here
     SCIONHeader ipHeader =
-        BuildHeader(source, destination, protocol, packet->GetSize(), ttl, tos, mayFragment);
+        BuildHeader(source, destination, protocol, packet->GetSize(), ttl, tos);
 
     // Handle a few cases:
     // 1) packet is passed in with a route entry
     // 1a) packet is passed in with a route entry but route->GetGateway is not set (e.g., on-demand)
     // 1b) packet is passed in with a route entry and valid gateway
-    // 2) packet is passed without a route and packet is destined to limited broadcast address
-    // 3) packet is passed without a route and packet is destined to a subnet-directed broadcast
+
     // address 4) packet is passed without a route, packet is not broadcast (e.g., a raw socket
     // call, or ICMP)
 
@@ -731,80 +769,9 @@ SCIONL3Protocol::Send(Ptr<Packet> packet,
         // 1b) with a valid gateway
         NS_LOG_LOGIC("SCIONL3Protocol::Send case 1b:  passed in with route and valid gateway");
         int32_t interface = GetInterfaceForDevice(route->GetOutputDevice());
-        m_sendOutgoingTrace(ipHeader, packet, interface);
-        if (m_enableDpd && ipHeader.GetDestination().IsMulticast())
-        {
-            UpdateDuplicate(packet, ipHeader);
-        }
+        m_sendOutgoingTrace(ipHeader, packet, interface);   
         SendRealOut(route, packet->Copy(), ipHeader);
         return;
-    }
-
-    // 2) packet is destined to limited broadcast address or link-local multicast address
-    if (destination.IsBroadcast() || destination.IsLocalMulticast())
-    {
-        NS_LOG_LOGIC("SCIONL3Protocol::Send case 2:  limited broadcast - no route");
-        uint32_t ifaceIndex = 0;
-        for (SCIONInterfaceList::iterator ifaceIter = m_interfaces.begin();
-             ifaceIter != m_interfaces.end();
-             ifaceIter++, ifaceIndex++)
-        {
-            Ptr<SCIONInterface> outInterface = *ifaceIter;
-            // ANY source matches any interface
-            bool sendIt = source.IsAny();
-            // check if some specific address on outInterface matches
-            for (uint32_t index = 0; !sendIt && index < outInterface->GetNAddresses(); index++)
-            {
-                if (outInterface->GetAddress(index).GetLocal() == source)
-                {
-                    sendIt = true;
-                }
-            }
-
-            if (sendIt)
-            {
-                // create a proxy route for this interface
-                Ptr<Ipv4Route> route = Create<Ipv4Route>();
-                route->SetDestination(destination);
-                route->SetGateway(SCIONAddress::GetAny());
-                route->SetSource(source);
-                route->SetOutputDevice(outInterface->GetDevice());
-                DecreaseIdentification(source, destination, protocol);
-                Send(pktCopyWithTags, source, destination, protocol, route);
-            }
-        }
-        return;
-    }
-
-    // 3) check: packet is destined to a subnet-directed broadcast address
-    for (SCIONInterfaceList::iterator ifaceIter = m_interfaces.begin();
-         ifaceIter != m_interfaces.end();
-         ifaceIter++)
-    {
-        Ptr<SCIONInterface> outInterface = *ifaceIter;
-        uint32_t ifaceIndex = GetInterfaceForDevice(outInterface->GetDevice());
-        for (uint32_t j = 0; j < GetNAddresses(ifaceIndex); j++)
-        {
-            SCIONInterfaceAddress ifAddr = GetAddress(ifaceIndex, j);
-            NS_LOG_LOGIC("Testing address " << ifAddr.GetLocal() << " with mask "
-                                            << ifAddr.GetMask());
-            if (destination.IsSubnetDirectedBroadcast(ifAddr.GetMask()) &&
-                destination.CombineMask(ifAddr.GetMask()) ==
-                    ifAddr.GetLocal().CombineMask(ifAddr.GetMask()))
-            {
-                NS_LOG_LOGIC("SCIONL3Protocol::Send case 3:  subnet directed bcast to "
-                             << ifAddr.GetLocal() << " - no route");
-                // create a proxy route for this interface
-                Ptr<Ipv4Route> route = Create<Ipv4Route>();
-                route->SetDestination(destination);
-                route->SetGateway(SCIONAddress::GetAny());
-                route->SetSource(source);
-                route->SetOutputDevice(outInterface->GetDevice());
-                DecreaseIdentification(source, destination, protocol);
-                Send(pktCopyWithTags, source, destination, protocol, route);
-                return;
-            }
-        }
     }
 
     // 4) packet is not broadcast, and route is NULL (e.g., a raw socket call)
@@ -812,7 +779,7 @@ SCIONL3Protocol::Send(Ptr<Packet> packet,
                  << destination);
     Socket::SocketErrno errno_;
     Ptr<NetDevice> oif(nullptr); // unused for now
-    Ptr<Ipv4Route> newRoute;
+    Ptr<SCIONRoute> newRoute;
     if (m_routingProtocol)
     {
         newRoute = m_routingProtocol->RouteOutput(pktCopyWithTags, ipHeader, oif, errno_);
@@ -822,15 +789,13 @@ SCIONL3Protocol::Send(Ptr<Packet> packet,
         NS_LOG_ERROR("SCIONL3Protocol::Send: m_routingProtocol == 0");
     }
     if (newRoute)
-    {
-        DecreaseIdentification(source, destination, protocol);
+    {     
         Send(pktCopyWithTags, source, destination, protocol, newRoute);
     }
     else
     {
         NS_LOG_WARN("No route to host.  Drop.");
         m_dropTrace(ipHeader, packet, DROP_NO_ROUTE, this, 0);
-        DecreaseIdentification(source, destination, protocol);
     }
 }
 
@@ -839,8 +804,7 @@ SCIONHeader
 SCIONL3Protocol::BuildHeader(SCIONAddress source,
                             SCIONAddress destination,
                             uint8_t protocol,
-                            uint16_t payloadSize,
-                            
+                            uint16_t payloadSize,                            
                             uint8_t tos
                             )
 {
@@ -853,17 +817,8 @@ SCIONL3Protocol::BuildHeader(SCIONAddress source,
     
     ipHeader.SetTos(tos);
 
-    uint64_t src = source.Get();
-    uint64_t dst = destination.Get();
-    uint64_t srcDst = dst | (src << 32);
-    std::pair<uint64_t, uint8_t> key = std::make_pair(srcDst, protocol);
 
-    
-    
-    if (Node::ChecksumEnabled())
-    {
-        ipHeader.EnableChecksum();
-    }
+
     return ipHeader;
 }
 
@@ -900,57 +855,31 @@ SCIONL3Protocol::SendRealOut(Ptr<Ipv4Route> route, Ptr<Packet> packet, const SCI
     if (outInterface->IsUp())
     {
         NS_LOG_LOGIC("Send to " << targetLabel << " " << target);
-        if (packet->GetSize() + ipHeader.GetSerializedSize() > outInterface->GetDevice()->GetMtu())
-        {
-            std::list<Ipv4PayloadHeaderPair> listFragments;
-            DoFragmentation(packet, ipHeader, outInterface->GetDevice()->GetMtu(), listFragments);
-            for (std::list<Ipv4PayloadHeaderPair>::iterator it = listFragments.begin();
-                 it != listFragments.end();
-                 it++)
-            {
-                NS_LOG_LOGIC("Sending fragment " << *(it->first));
-                CallTxTrace(it->second, it->first, this, interface);
-                outInterface->Send(it->first, it->second, target);
-            }
-        }
-        else
-        {
-            CallTxTrace(ipHeader, packet, this, interface);
-            outInterface->Send(packet, ipHeader, target);
-        }
+        NS_ASSERT_MSG(packet->GetSize() + ipHeader.GetSerializedSize() <= outInterface->GetDevice()->GetMtu(),"MTU exceeded");
+        
+        
+        CallTxTrace(ipHeader, packet, this, interface);
+        outInterface->Send(packet, ipHeader, target);
+        
     }
 }
 
 void
-SCIONL3Protocol::LocalDeliver(Ptr<const Packet> packet, const SCIONHeader& ip, uint32_t iif)
+SCIONL3Protocol::LocalDeliver(Ptr<const Packet> packet, const SCIONHeader& hdr, uint32_t iif)
 {
-    NS_LOG_FUNCTION(this << packet << &ip << iif);
+    NS_LOG_FUNCTION(this << packet << &hdr << iif);
     Ptr<Packet> p = packet->Copy(); // need to pass a non-const packet up
-    SCIONHeader ipHeader = ip;
-
-    if (!ipHeader.IsLastFragment() || ipHeader.GetFragmentOffset() != 0)
-    {
-        NS_LOG_LOGIC("Received a fragment, processing " << *p);
-        bool isPacketComplete;
-        isPacketComplete = ProcessFragment(p, ipHeader, iif);
-        if (isPacketComplete == false)
-        {
-            return;
-        }
-        NS_LOG_LOGIC("Got last fragment, Packet is complete " << *p);
-        ipHeader.SetFragmentOffset(0);
-        ipHeader.SetPayloadSize(p->GetSize());
-    }
+    SCIONHeader header = hdr;
 
     m_localDeliverTrace(ipHeader, p, iif);
 
-    Ptr<IpL4Protocol> protocol = GetProtocol(ipHeader.GetProtocol(), iif);
+    Ptr<SCIONL4Protocol> protocol = GetProtocol(header.GetProtocol(), iif);
     if (protocol)
     {
         // we need to make a copy in the unlikely event we hit the
         // RX_ENDPOINT_UNREACH codepath
         Ptr<Packet> copy = p->Copy();
-        enum IpL4Protocol::RxStatus status = protocol->Receive(p, ipHeader, GetInterface(iif));
+        enum IpL4Protocol::RxStatus status = protocol->Receive(p, header, GetInterface(iif));
         switch (status)
         {
         case IpL4Protocol::RX_OK:
@@ -959,13 +888,14 @@ SCIONL3Protocol::LocalDeliver(Ptr<const Packet> packet, const SCIONHeader& ip, u
         // fall through
         case IpL4Protocol::RX_CSUM_FAILED:
             break;
+        /*
         case IpL4Protocol::RX_ENDPOINT_UNREACH:
             if (ipHeader.GetDestination().IsBroadcast() == true ||
                 ipHeader.GetDestination().IsMulticast() == true)
             {
                 break; // Do not reply to broadcast or multicast
             }
-            // Another case to suppress ICMP is a subnet-directed broadcast
+            // Another case to suppress SCMP is a subnet-directed broadcast
             bool subnetDirected = false;
             for (uint32_t i = 0; i < GetNAddresses(iif); i++)
             {
@@ -979,8 +909,9 @@ SCIONL3Protocol::LocalDeliver(Ptr<const Packet> packet, const SCIONHeader& ip, u
             }
             if (subnetDirected == false)
             {
-                GetIcmp()->SendDestUnreachPort(ipHeader, copy);
+                GetScmp()->SendDestUnreachPort(ipHeader, copy);
             }
+        */
         }
     }
 }
@@ -1182,308 +1113,6 @@ SCIONL3Protocol::RouteInputError(Ptr<const Packet> p,
     // \todo Send an ICMP no route.
 }
 
-void
-SCIONL3Protocol::DoFragmentation(Ptr<Packet> packet,
-                                const SCIONHeader& SCIONHeader,
-                                uint32_t outIfaceMtu,
-                                std::list<Ipv4PayloadHeaderPair>& listFragments)
-{
-    // BEWARE: here we do assume that the header options are not present.
-    // a much more complex handling is necessary in case there are options.
-    // If (when) IPv4 option headers will be implemented, the following code shall be changed.
-    // Of course also the reassemby code shall be changed as well.
-
-    NS_LOG_FUNCTION(this << *packet << outIfaceMtu << &listFragments);
-
-    Ptr<Packet> p = packet->Copy();
-
-    NS_ASSERT_MSG((SCIONHeader.GetSerializedSize() == 5 * 4),
-                  "IPv4 fragmentation implementation only works without option headers.");
-
-    uint16_t offset = 0;
-    bool moreFragment = true;
-    uint16_t originalOffset = SCIONHeader.GetFragmentOffset();
-    bool isLastFragment = SCIONHeader.IsLastFragment();
-    uint32_t currentFragmentablePartSize = 0;
-
-    // IPv4 fragments are all 8 bytes aligned but the last.
-    // The IP payload size is:
-    // floor( ( outIfaceMtu - SCIONHeader.GetSerializedSize() ) /8 ) *8
-    uint32_t fragmentSize = (outIfaceMtu - SCIONHeader.GetSerializedSize()) & ~uint32_t(0x7);
-
-    NS_LOG_LOGIC("Fragmenting - Target Size: " << fragmentSize);
-
-    do
-    {
-        SCIONHeader fragmentHeader = SCIONHeader;
-
-        if (p->GetSize() > offset + fragmentSize)
-        {
-            moreFragment = true;
-            currentFragmentablePartSize = fragmentSize;
-            fragmentHeader.SetMoreFragments();
-        }
-        else
-        {
-            moreFragment = false;
-            currentFragmentablePartSize = p->GetSize() - offset;
-            if (!isLastFragment)
-            {
-                fragmentHeader.SetMoreFragments();
-            }
-            else
-            {
-                fragmentHeader.SetLastFragment();
-            }
-        }
-
-        NS_LOG_LOGIC("Fragment creation - " << offset << ", " << currentFragmentablePartSize);
-        Ptr<Packet> fragment = p->CreateFragment(offset, currentFragmentablePartSize);
-        NS_LOG_LOGIC("Fragment created - " << offset << ", " << fragment->GetSize());
-
-        fragmentHeader.SetFragmentOffset(offset + originalOffset);
-        fragmentHeader.SetPayloadSize(currentFragmentablePartSize);
-
-        if (Node::ChecksumEnabled())
-        {
-            fragmentHeader.EnableChecksum();
-        }
-
-        NS_LOG_LOGIC("Fragment check - " << fragmentHeader.GetFragmentOffset());
-
-        NS_LOG_LOGIC("New fragment Header " << fragmentHeader);
-
-        std::ostringstream oss;
-        oss << fragmentHeader;
-        fragment->Print(oss);
-
-        NS_LOG_LOGIC("New fragment " << *fragment);
-
-        listFragments.emplace_back(fragment, fragmentHeader);
-
-        offset += currentFragmentablePartSize;
-
-    } while (moreFragment);
-}
-
-bool
-SCIONL3Protocol::ProcessFragment(Ptr<Packet>& packet, SCIONHeader& ipHeader, uint32_t iif)
-{
-    NS_LOG_FUNCTION(this << packet << ipHeader << iif);
-
-    uint64_t addressCombination =
-        uint64_t(ipHeader.GetSource().Get()) << 32 | uint64_t(ipHeader.GetDestination().Get());
-    uint32_t idProto =
-        uint32_t(ipHeader.GetIdentification()) << 16 | uint32_t(ipHeader.GetProtocol());
-    FragmentKey_t key;
-    bool ret = false;
-    Ptr<Packet> p = packet->Copy();
-
-    key.first = addressCombination;
-    key.second = idProto;
-
-    Ptr<Fragments> fragments;
-
-    MapFragments_t::iterator it = m_fragments.find(key);
-    if (it == m_fragments.end())
-    {
-        fragments = Create<Fragments>();
-        m_fragments.insert(std::make_pair(key, fragments));
-
-        FragmentsTimeoutsListI_t iter = SetTimeout(key, ipHeader, iif);
-        fragments->SetTimeoutIter(iter);
-    }
-    else
-    {
-        fragments = it->second;
-    }
-
-    NS_LOG_LOGIC("Adding fragment - Size: " << packet->GetSize()
-                                            << " - Offset: " << (ipHeader.GetFragmentOffset()));
-
-    fragments->AddFragment(p, ipHeader.GetFragmentOffset(), !ipHeader.IsLastFragment());
-
-    if (fragments->IsEntire())
-    {
-        packet = fragments->GetPacket();
-        m_timeoutEventList.erase(fragments->GetTimeoutIter());
-        fragments = nullptr;
-        m_fragments.erase(key);
-        ret = true;
-    }
-
-    return ret;
-}
-
-SCIONL3Protocol::Fragments::Fragments()
-    : m_moreFragment(0)
-{
-    NS_LOG_FUNCTION(this);
-}
-
-void
-SCIONL3Protocol::Fragments::AddFragment(Ptr<Packet> fragment,
-                                       uint16_t fragmentOffset,
-                                       bool moreFragment)
-{
-    NS_LOG_FUNCTION(this << fragment << fragmentOffset << moreFragment);
-
-    std::list<std::pair<Ptr<Packet>, uint16_t>>::iterator it;
-
-    for (it = m_fragments.begin(); it != m_fragments.end(); it++)
-    {
-        if (it->second > fragmentOffset)
-        {
-            break;
-        }
-    }
-
-    if (it == m_fragments.end())
-    {
-        m_moreFragment = moreFragment;
-    }
-
-    m_fragments.insert(it, std::pair<Ptr<Packet>, uint16_t>(fragment, fragmentOffset));
-}
-
-bool
-SCIONL3Protocol::Fragments::IsEntire() const
-{
-    NS_LOG_FUNCTION(this);
-
-    bool ret = !m_moreFragment && !m_fragments.empty();
-
-    if (ret)
-    {
-        uint16_t lastEndOffset = 0;
-
-        for (std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator it = m_fragments.begin();
-             it != m_fragments.end();
-             it++)
-        {
-            // overlapping fragments do exist
-            NS_LOG_LOGIC("Checking overlaps " << lastEndOffset << " - " << it->second);
-
-            if (lastEndOffset < it->second)
-            {
-                ret = false;
-                break;
-            }
-            // fragments might overlap in strange ways
-            uint16_t fragmentEnd = it->first->GetSize() + it->second;
-            lastEndOffset = std::max(lastEndOffset, fragmentEnd);
-        }
-    }
-
-    return ret;
-}
-
-Ptr<Packet>
-SCIONL3Protocol::Fragments::GetPacket() const
-{
-    NS_LOG_FUNCTION(this);
-
-    std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator it = m_fragments.begin();
-
-    Ptr<Packet> p = it->first->Copy();
-    uint16_t lastEndOffset = p->GetSize();
-    it++;
-
-    for (; it != m_fragments.end(); it++)
-    {
-        if (lastEndOffset > it->second)
-        {
-            // The fragments are overlapping.
-            // We do not overwrite the "old" with the "new" because we do not know when each
-            // arrived. This is different from what Linux does. It is not possible to emulate a
-            // fragmentation attack.
-            uint32_t newStart = lastEndOffset - it->second;
-            if (it->first->GetSize() > newStart)
-            {
-                uint32_t newSize = it->first->GetSize() - newStart;
-                Ptr<Packet> tempFragment = it->first->CreateFragment(newStart, newSize);
-                p->AddAtEnd(tempFragment);
-            }
-        }
-        else
-        {
-            NS_LOG_LOGIC("Adding: " << *(it->first));
-            p->AddAtEnd(it->first);
-        }
-        lastEndOffset = p->GetSize();
-    }
-
-    return p;
-}
-
-Ptr<Packet>
-SCIONL3Protocol::Fragments::GetPartialPacket() const
-{
-    NS_LOG_FUNCTION(this);
-
-    std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator it = m_fragments.begin();
-
-    Ptr<Packet> p = Create<Packet>();
-    uint16_t lastEndOffset = 0;
-
-    if (m_fragments.begin()->second > 0)
-    {
-        return p;
-    }
-
-    for (it = m_fragments.begin(); it != m_fragments.end(); it++)
-    {
-        if (lastEndOffset > it->second)
-        {
-            uint32_t newStart = lastEndOffset - it->second;
-            uint32_t newSize = it->first->GetSize() - newStart;
-            Ptr<Packet> tempFragment = it->first->CreateFragment(newStart, newSize);
-            p->AddAtEnd(tempFragment);
-        }
-        else if (lastEndOffset == it->second)
-        {
-            NS_LOG_LOGIC("Adding: " << *(it->first));
-            p->AddAtEnd(it->first);
-        }
-        lastEndOffset = p->GetSize();
-    }
-
-    return p;
-}
-
-void
-SCIONL3Protocol::Fragments::SetTimeoutIter(FragmentsTimeoutsListI_t iter)
-{
-    m_timeoutIter = iter;
-}
-
-SCIONL3Protocol::FragmentsTimeoutsListI_t
-SCIONL3Protocol::Fragments::GetTimeoutIter()
-{
-    return m_timeoutIter;
-}
-
-void
-SCIONL3Protocol::HandleFragmentsTimeout(FragmentKey_t key, SCIONHeader& ipHeader, uint32_t iif)
-{
-    NS_LOG_FUNCTION(this << &key << &ipHeader << iif);
-
-    MapFragments_t::iterator it = m_fragments.find(key);
-    Ptr<Packet> packet = it->second->GetPartialPacket();
-
-    // if we have at least 8 bytes, we can send an ICMP.
-    if (packet->GetSize() > 8)
-    {
-        Ptr<Icmpv4L4Protocol> icmp = GetIcmp();
-        icmp->SendTimeExceededTtl(ipHeader, packet, true);
-    }
-    m_dropTrace(ipHeader, packet, DROP_FRAGMENT_TIMEOUT, this, iif);
-
-    // clear the buffers
-    it->second = nullptr;
-
-    m_fragments.erase(key);
-}
 
 bool
 SCIONL3Protocol::UpdateDuplicate(Ptr<const Packet> p, const SCIONHeader& header)
@@ -1587,45 +1216,6 @@ SCIONL3Protocol::RemoveDuplicates()
     {
         m_cleanDpd = Simulator::Schedule(m_purge, &SCIONL3Protocol::RemoveDuplicates, this);
     }
-}
-
-SCIONL3Protocol::FragmentsTimeoutsListI_t
-SCIONL3Protocol::SetTimeout(FragmentKey_t key, SCIONHeader ipHeader, uint32_t iif)
-{
-    Time now = Simulator::Now() + m_fragmentExpirationTimeout;
-
-    if (m_timeoutEventList.empty())
-    {
-        m_timeoutEvent =
-            Simulator::Schedule(m_fragmentExpirationTimeout, &SCIONL3Protocol::HandleTimeout, this);
-    }
-    m_timeoutEventList.emplace_back(now, key, ipHeader, iif);
-
-    SCIONL3Protocol::FragmentsTimeoutsListI_t iter = --m_timeoutEventList.end();
-
-    return (iter);
-}
-
-void
-SCIONL3Protocol::HandleTimeout()
-{
-    Time now = Simulator::Now();
-
-    while (!m_timeoutEventList.empty() && std::get<0>(*m_timeoutEventList.begin()) == now)
-    {
-        HandleFragmentsTimeout(std::get<1>(*m_timeoutEventList.begin()),
-                               std::get<2>(*m_timeoutEventList.begin()),
-                               std::get<3>(*m_timeoutEventList.begin()));
-        m_timeoutEventList.pop_front();
-    }
-
-    if (m_timeoutEventList.empty())
-    {
-        return;
-    }
-
-    Time difference = std::get<0>(*m_timeoutEventList.begin()) - now;
-    m_timeoutEvent = Simulator::Schedule(difference, &SCIONL3Protocol::HandleTimeout, this);
 }
 
 } // namespace ns3

@@ -99,8 +99,7 @@ class SCIONL3Protocol : public SCION
 
         DROP_NO_ROUTE,         /**< No route to host */     
         DROP_INTERFACE_DOWN,   /**< Interface is down so can not send packet */
-        DROP_ROUTE_ERROR,      /**< Route error */        
-        DROP_DUPLICATE         /**< Duplicate packet received */
+        DROP_ROUTE_ERROR      /**< Route error */             
     };
 
     /**
@@ -284,6 +283,10 @@ class SCIONL3Protocol : public SCION
      * \param route route
      * \param packet packet to send
      * \param header SCION header to add to the packet
+     * 
+     * Other than IPv4 SCION doesn't fragment here.
+     * Just determine the right OutInterface from the given route,
+     * and call Send() on it, passing the packet and header
      */
     void SendRealOut(Ptr<SCIONRoute> route, Ptr<Packet> packet, const SCIONHeader& header);
 
@@ -360,7 +363,7 @@ class SCIONL3Protocol : public SCION
     SCIONInterfaceList m_interfaces; //!< List of SCION interfaces.
     SCIONInterfaceReverseContainer
         m_reverseInterfacesContainer; //!< Container of NetDevice / Interface index associations.
-    uint8_t m_defaultTtl;             //!< Default TTL
+
     std::map<std::pair<uint64_t, uint8_t>, uint16_t>
         m_identification; //!< Identification (for each {src, dst, proto} tuple)
     Ptr<Node> m_node;     //!< Node attached to stack.
