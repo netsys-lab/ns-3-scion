@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2007 INRIA
- *
+ * Copyright (c) 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation;
@@ -14,13 +13,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ * Author:
  */
 #ifndef SCION_H
 #define SCION_H
 
-#include "SCION-interface-address.h"
-#include "SCION-route.h"
+#include "scion-interface-address.h"
 
 #include "ns3/callback.h"
 #include "ns3/scion-address.h"
@@ -36,6 +34,7 @@ class Ipv6Interface;
 class Node;
 class NetDevice;
 class Packet;
+class SCIONRoute;
 class SCIONRoutingProtocol;
 class IpL4Protocol;
 class SCIONHeader;
