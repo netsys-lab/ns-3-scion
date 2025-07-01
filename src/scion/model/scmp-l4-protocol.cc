@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 INRIA
+ * Copyright (c)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,14 +19,13 @@
 
 #include "scmp-l4-protocol.h"
 
-#include "ipv4-interface.h"
-#include "ipv4-l3-protocol.h"
-#include "ipv4-raw-socket-factory-impl.h"
+#include "scion-interface.h"
+#include "scion-l3-protocol.h"
+#include "scion-raw-socket-factory-impl.h"
 
 #include "ns3/assert.h"
 #include "ns3/boolean.h"
-#include "ns3/ipv4-route.h"
-#include "ns3/ipv6-interface.h"
+#include "ns3/scion-route.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/packet.h"
@@ -38,14 +37,14 @@ NS_LOG_COMPONENT_DEFINE("ScmpL4Protocol");
 
 NS_OBJECT_ENSURE_REGISTERED(ScmpL4Protocol);
 
-// see rfc 792
+
 const uint8_t ScmpL4Protocol::PROT_NUMBER = 1;
 
 TypeId
 ScmpL4Protocol::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::ScmpL4Protocol")
-                            .SetParent<IpL4Protocol>()
+                            .SetParent<SCIONL4Protocol>()
                             .SetGroupName("Internet")
                             .AddConstructor<ScmpL4Protocol>();
     return tid;
@@ -84,14 +83,14 @@ ScmpL4Protocol::NotifyNewAggregate()
         Ptr<Node> node = this->GetObject<Node>();
         if (node)
         {
-            Ptr<Ipv4> ipv4 = this->GetObject<Ipv4>();
-            if (ipv4 && m_downTarget.IsNull())
+            Ptr<SCION> scion = this->GetObject<SCION>();
+            if (scion && m_downTarget.IsNull())
             {
                 this->SetNode(node);
-                ipv4->Insert(this);
-                Ptr<Ipv4RawSocketFactoryImpl> rawFactory = CreateObject<Ipv4RawSocketFactoryImpl>();
-                ipv4->AggregateObject(rawFactory);
-                this->SetDownTarget(MakeCallback(&Ipv4::Send, ipv4));
+                scion->Insert(this);
+                Ptr<SCIONRawSocketFactoryImpl> rawFactory = CreateObject<SCIONRawSocketFactoryImpl>();
+                scion->AggregateObject(rawFactory);
+                this->SetDownTarget(MakeCallback(&SCION::Send, scion));
             }
         }
     }
@@ -113,23 +112,23 @@ ScmpL4Protocol::GetProtocolNumber() const
 }
 
 void
-ScmpL4Protocol::SendMessage(Ptr<Packet> packet, Ipv4Address dest, uint8_t type, uint8_t code)
+ScmpL4Protocol::SendMessage(Ptr<Packet> packet, SCIONAddress dest, uint8_t type, uint8_t code)
 {
     NS_LOG_FUNCTION(this << packet << dest << static_cast<uint32_t>(type)
                          << static_cast<uint32_t>(code));
-    Ptr<Ipv4> ipv4 = m_node->GetObject<Ipv4>();
-    NS_ASSERT(ipv4 && ipv4->GetRoutingProtocol());
-    Ipv4Header header;
-    header.SetDestination(dest);
+    auto scion = m_node->GetObject<SCION>();
+    NS_ASSERT(scion && scion->GetRoutingProtocol());
+    SCIONHeader header;
+    header.SetDstAddress(dest);
     header.SetProtocol(PROT_NUMBER);
     Socket::SocketErrno errno_;
-    Ptr<Ipv4Route> route;
+    Ptr<SCIONRoute> route;
     Ptr<NetDevice> oif(nullptr); // specify non-zero if bound to a source address
-    route = ipv4->GetRoutingProtocol()->RouteOutput(packet, header, oif, errno_);
+    route = scion->GetRoutingProtocol()->RouteOutput(packet, header, oif, errno_);
     if (route)
     {
         NS_LOG_LOGIC("Route exists");
-        Ipv4Address source = route->GetSource();
+        SCIONAddress source = route->GetSource();
         SendMessage(packet, source, dest, type, code, route);
     }
     else
@@ -140,15 +139,15 @@ ScmpL4Protocol::SendMessage(Ptr<Packet> packet, Ipv4Address dest, uint8_t type, 
 
 void
 ScmpL4Protocol::SendMessage(Ptr<Packet> packet,
-                              Ipv4Address source,
-                              Ipv4Address dest,
+                              SCIONAddress source,
+                              SCIONAddress dest,
                               uint8_t type,
                               uint8_t code,
-                              Ptr<Ipv4Route> route)
+                              Ptr<SCIONRoute> route)
 {
     NS_LOG_FUNCTION(this << packet << source << dest << static_cast<uint32_t>(type)
                          << static_cast<uint32_t>(code) << route);
-    Icmpv4Header icmp;
+    ScmpHeader icmp;
     icmp.SetType(type);
     icmp.SetCode(code);
     if (Node::ChecksumEnabled())
@@ -161,7 +160,7 @@ ScmpL4Protocol::SendMessage(Ptr<Packet> packet,
 }
 
 void
-ScmpL4Protocol::SendDestUnreachFragNeeded(Ipv4Header header,
+ScmpL4Protocol::SendDestUnreachFragNeeded(SCIONHeader header,
                                             Ptr<const Packet> orgData,
                                             uint16_t nextHopMtu)
 {
@@ -170,14 +169,14 @@ ScmpL4Protocol::SendDestUnreachFragNeeded(Ipv4Header header,
 }
 
 void
-ScmpL4Protocol::SendDestUnreachPort(Ipv4Header header, Ptr<const Packet> orgData)
+ScmpL4Protocol::SendDestUnreachPort(SCIONHeader header, Ptr<const Packet> orgData)
 {
     NS_LOG_FUNCTION(this << header << *orgData);
     SendDestUnreach(header, orgData, Icmpv4DestinationUnreachable::ICMPV4_PORT_UNREACHABLE, 0);
 }
 
 void
-ScmpL4Protocol::SendDestUnreach(Ipv4Header header,
+ScmpL4Protocol::SendDestUnreach(SCIONHeader header,
                                   Ptr<const Packet> orgData,
                                   uint8_t code,
                                   uint16_t nextHopMtu)
@@ -193,7 +192,7 @@ ScmpL4Protocol::SendDestUnreach(Ipv4Header header,
 }
 
 void
-ScmpL4Protocol::SendTimeExceededTtl(Ipv4Header header, Ptr<const Packet> orgData, bool isFragment)
+ScmpL4Protocol::SendTimeExceededTtl(SCIONHeader header, Ptr<const Packet> orgData, bool isFragment)
 {
     NS_LOG_FUNCTION(this << header << *orgData);
     Ptr<Packet> p = Create<Packet>();
@@ -220,8 +219,8 @@ ScmpL4Protocol::SendTimeExceededTtl(Ipv4Header header, Ptr<const Packet> orgData
 void
 ScmpL4Protocol::HandleEcho(Ptr<Packet> p,
                              Icmpv4Header header,
-                             Ipv4Address source,
-                             Ipv4Address destination)
+                             SCIONAddress source,
+                             SCIONAddress destination)
 {
     NS_LOG_FUNCTION(this << p << header << source << destination);
 
@@ -233,10 +232,10 @@ ScmpL4Protocol::HandleEcho(Ptr<Packet> p,
 }
 
 void
-ScmpL4Protocol::Forward(Ipv4Address source,
+ScmpL4Protocol::Forward(SCIONAddress source,
                           Icmpv4Header icmp,
                           uint32_t info,
-                          Ipv4Header ipHeader,
+                          SCIONHeader ipHeader,
                           const uint8_t payload[8])
 {
     NS_LOG_FUNCTION(this << source << icmp << info << ipHeader << payload);
@@ -259,8 +258,8 @@ ScmpL4Protocol::Forward(Ipv4Address source,
 void
 ScmpL4Protocol::HandleDestUnreach(Ptr<Packet> p,
                                     Icmpv4Header icmp,
-                                    Ipv4Address source,
-                                    Ipv4Address destination)
+                                    SCIONAddress source,
+                                    SCIONAddress destination)
 {
     NS_LOG_FUNCTION(this << p << icmp << source << destination);
 
@@ -268,15 +267,15 @@ ScmpL4Protocol::HandleDestUnreach(Ptr<Packet> p,
     p->PeekHeader(unreach);
     uint8_t payload[8];
     unreach.GetData(payload);
-    Ipv4Header ipHeader = unreach.GetHeader();
+    SCIONHeader ipHeader = unreach.GetHeader();
     Forward(source, icmp, unreach.GetNextHopMtu(), ipHeader, payload);
 }
 
 void
 ScmpL4Protocol::HandleTimeExceeded(Ptr<Packet> p,
                                      Icmpv4Header icmp,
-                                     Ipv4Address source,
-                                     Ipv4Address destination)
+                                     SCIONAddress source,
+                                     SCIONAddress destination)
 {
     NS_LOG_FUNCTION(this << p << icmp << source << destination);
 
@@ -284,14 +283,14 @@ ScmpL4Protocol::HandleTimeExceeded(Ptr<Packet> p,
     p->PeekHeader(time);
     uint8_t payload[8];
     time.GetData(payload);
-    Ipv4Header ipHeader = time.GetHeader();
+    SCIONHeader ipHeader = time.GetHeader();
     // info field is zero for TimeExceeded on linux
     Forward(source, icmp, 0, ipHeader, payload);
 }
 
 enum IpL4Protocol::RxStatus
 ScmpL4Protocol::Receive(Ptr<Packet> p,
-                          const Ipv4Header& header,
+                          const SCIONHeader& header,
                           Ptr<Ipv4Interface> incomingInterface)
 {
     NS_LOG_FUNCTION(this << p << header << incomingInterface);
@@ -301,11 +300,11 @@ ScmpL4Protocol::Receive(Ptr<Packet> p,
     switch (icmp.GetType())
     {
     case Icmpv4Header::ICMPV4_ECHO: {
-        Ipv4Address dst = header.GetDestination();
+        SCIONAddress dst = header.GetDestination();
         // We could have received an Echo request to a broadcast-type address.
         if (dst.IsBroadcast())
         {
-            Ipv4Address src = header.GetSource();
+            SCIONAddress src = header.GetSource();
             for (uint32_t index = 0; index < incomingInterface->GetNAddresses(); index++)
             {
                 Ipv4InterfaceAddress addr = incomingInterface->GetAddress(index);

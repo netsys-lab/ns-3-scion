@@ -36,7 +36,7 @@ class NetDevice;
 class Packet;
 class SCIONRoute;
 class SCIONRoutingProtocol;
-class IpL4Protocol;
+class SCIONL4Protocol;
 class SCIONHeader;
 
 /**
@@ -146,14 +146,14 @@ class SCION : public Object
      * a working L4 Protocol and returned from this method.
      * The caller does not get ownership of the returned pointer.
      */
-    virtual void Insert(Ptr<IpL4Protocol> protocol) = 0;
+    virtual void Insert(Ptr<SCIONL4Protocol> protocol) = 0;
 
     /**
      * \brief Add a L4 protocol to a specific interface.
      *
      * This may be called multiple times for multiple interfaces for the same
      * protocol.  To insert for all interfaces, use the separate
-     * Insert (Ptr<IpL4Protocol> protocol) method.
+     * Insert (Ptr<SCIONL4Protocol> protocol) method.
      *
      * Setting a protocol on a specific interface will overwrite the
      * previously bound protocol.
@@ -161,7 +161,7 @@ class SCION : public Object
      * \param protocol L4 protocol.
      * \param interfaceIndex interface index.
      */
-    virtual void Insert(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex) = 0;
+    virtual void Insert(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex) = 0;
 
     /**
      * \param protocol protocol to remove from this demux.
@@ -169,14 +169,14 @@ class SCION : public Object
      * The input value to this method should be the value
      * returned from the SCIONL4Protocol::Insert method.
      */
-    virtual void Remove(Ptr<IpL4Protocol> protocol) = 0;
+    virtual void Remove(Ptr<SCIONL4Protocol> protocol) = 0;
 
     /**
      * \brief Remove a L4 protocol from a specific interface.
      * \param protocol L4 protocol to remove.
      * \param interfaceIndex interface index.
      */
-    virtual void Remove(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex) = 0;
+    virtual void Remove(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex) = 0;
 
     /**
      * \brief Determine whether address and interface corresponding to
@@ -321,15 +321,15 @@ class SCION : public Object
      * This method is typically called by lower layers
      * to forward packets up the stack to the right protocol.
      */
-    virtual Ptr<IpL4Protocol> GetProtocol(int protocolNumber) const = 0;
+    virtual Ptr<SCIONL4Protocol> GetProtocol(int protocolNumber) const = 0;
 
     /**
      * \brief Get L4 protocol by protocol number for the specified interface.
      * \param protocolNumber protocol number
      * \param interfaceIndex interface index, -1 means "any" interface.
-     * \return corresponding IpL4Protocol or 0 if not found
+     * \return corresponding SCIONL4Protocol or 0 if not found
      */
-    virtual Ptr<IpL4Protocol> GetProtocol(int protocolNumber, int32_t interfaceIndex) const = 0;
+    virtual Ptr<SCIONL4Protocol> GetProtocol(int protocolNumber, int32_t interfaceIndex) const = 0;
 
     /**
      * \brief Creates a raw socket

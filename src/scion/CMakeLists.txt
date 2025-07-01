@@ -1,13 +1,18 @@
 build_lib(
   LIBNAME scion
   SOURCE_FILES
-    model/scion-ia.cc
-    model/scion-address.cc   
     model/hop-field.cc
     model/info-field.cc
-    model/scion-path.cc
+    model/scion-address.cc   
     model/scion-header.cc
+    model/scion-ia.cc
+    model/scion-interface.cc
+    model/scion-interface-address.cc
+    model/scion-l3-protocol.cc
     model/scion-node.cc
+    model/scion-path.cc
+    model/scion-socket-address.cc
+    model/scion.cc
     model/scmp/scmp-destination-unreachable.cc
     model/scmp/scmp-echo.cc
     model/scmp/scmp-external-interface-down.cc
@@ -16,34 +21,37 @@ build_lib(
     model/scmp/scmp-packet-too-big.cc
     model/scmp/scmp-parameter-problem.cc
     model/scmp/scmp-traceroute.cc
-    model/scion-socket-address.cc
   HEADER_FILES
-    model/util/endian-utils.h
-    model/scmp/scmp-echo.h
-    model/scmp/scmp-header.h
+
+    model/fields-forward.h
+    model/hop-field.h
+    model/info-field.h
+    model/scion-address.h
+    model/scion-header.h
+    model/scion-ia.h
+    model/scion-interface.h
+    model/scion-interface-address.h
+    model/scion-l3-protocol.h
+    model/scion-node.h
+    model/scion-path.h
+    model/scion-socket-address.h
+    model/scion-types.h
+    model/scion.h
     model/scmp/scmp-destination-unreachable.h
+    model/scmp/scmp-echo.h
     model/scmp/scmp-external-interface-down.h
+    model/scmp/scmp-header.h
     model/scmp/scmp-internal-connectivity-down.h
     model/scmp/scmp-packet-too-big.h
     model/scmp/scmp-parameter-problem.h
     model/scmp/scmp-traceroute.h
     model/scmp/scmp-typecodes.h
-
-    model/fields-forward.h
-    model/hop-field.h
-    model/info-field.h
-    model/scion-header.h
-    model/scion-path.h
-    model/scion-types.h
-    model/scion-ia.h
-    model/scion-node.h
-    model/scion-address.h
-    model/scion-socket-address.h
+    model/util/endian-utils.h
   LIBRARIES_TO_LINK
     ${libcore} ${libnetwork} ${libinternet}
   TEST_SOURCES
     test/scion-socket-address-test.cc
-    #test/scion-node-test.cc
+    test/scion-node-test.cc
     test/scion-test-suite.cc
     test/scion-header-test.cc
     test/scion-path-test.cc

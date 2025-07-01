@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2006 Georgia Tech Research Corporation
+// Copyright (c)
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
@@ -46,6 +46,29 @@ SCIONL4Protocol::~SCIONL4Protocol()
 {
     NS_LOG_FUNCTION(this);
 }
+
+
+    /**provide default implementation, so that derived user classes dont have to.
+     * SCION protocols just have to provide the SCION overload of Receive
+     */
+    RxStatus SCIONL4Protocol::Receive(Ptr<Packet> p,
+                             const Ipv4Header& header,
+                             Ptr<Ipv4Interface> incomingInterface)
+    {
+        NS_ASSERT_MSG(false, "Not Implemented");
+        return RxStatus::RX_OK;
+    }
+
+    /**provide default implementation, so that derived user classes dont have to.
+     * SCION protocols just have to provide the SCION overload of Receive
+     */
+    RxStatus SCIONL4Protocol::Receive(Ptr<Packet> p,
+                             const Ipv6Header& header,
+                             Ptr<Ipv6Interface> incomingInterface)
+    {
+        NS_ASSERT_MSG(false, "Not Implemented");
+        return RxStatus::RX_OK;
+    }
 
 void
 SCIONL4Protocol::ReceiveScmp(SCIONAddress icmpSource,

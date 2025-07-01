@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 INRIA
+ * Copyright (c)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,36 +14,35 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@cutebugs.net>
+ * Author:
  */
 
-#ifndef ICMPV4_L4_PROTOCOL_H
-#define ICMPV4_L4_PROTOCOL_H
+#ifndef SCMP_L4_PROTOCOL_H
+#define SCMP_L4_PROTOCOL_H
 
-#include "icmpv4.h"
-#include "ip-l4-protocol.h"
+//#include "scmp-header.h"
+#include "scion-l4-protocol.h"
 
-#include "ns3/ipv4-address.h"
+#include "ns3/scion-address.h"
 
 namespace ns3
 {
 
 class Node;
-class Ipv4Interface;
-class Ipv4Route;
+class SCIONInterface;
+class SCIONRoute;
 
 /**
- * \ingroup ipv4
- * \defgroup icmp ICMP protocol and associated headers.
+ * \ingroup scion
+ * \defgroup scmp SCMP protocol and associated headers.
  */
 
 /**
  * \ingroup icmp
  *
- * \brief This is the implementation of the ICMP protocol as
- * described in \RFC{792}.
+ * \brief This is the implementation of the SCMP protocol
  */
-class ScmpL4Protocol : public IpL4Protocol
+class ScmpL4Protocol : public SCIONL4Protocol
 {
   public:
     /**
@@ -51,7 +50,7 @@ class ScmpL4Protocol : public IpL4Protocol
      * \return the object TypeId
      */
     static TypeId GetTypeId();
-    static const uint8_t PROT_NUMBER; //!< ICMP protocol number (0x1)
+    static const uint8_t PROT_NUMBER; //!< SCMP protocol number (0x1)
 
     ScmpL4Protocol();
     ~ScmpL4Protocol() override;
@@ -82,51 +81,36 @@ class ScmpL4Protocol : public IpL4Protocol
      * \returns the receive status
      */
     enum IpL4Protocol::RxStatus Receive(Ptr<Packet> p,
-                                        const Ipv4Header& header,
-                                        Ptr<Ipv4Interface> incomingInterface) override;
+                                        const SCIONHeader& header,
+                                        Ptr<SCIONInterface> incomingInterface) override;
 
+    
     /**
-     * \brief Receive method.
-     * \param p the packet
-     * \param header the IPv6 header
-     * \param incomingInterface the interface from which the packet is coming
-     * \returns the receive status
-     */
-    enum IpL4Protocol::RxStatus Receive(Ptr<Packet> p,
-                                        const Ipv6Header& header,
-                                        Ptr<Ipv6Interface> incomingInterface) override;
-
-    /**
-     * \brief Send a Destination Unreachable - Fragmentation needed ICMP error
+     * \brief Send a Destination Unreachable - Fragmentation needed SCMP error
      * \param header the original IP header
      * \param orgData the original packet
      * \param nextHopMtu the next hop MTU
      */
-    void SendDestUnreachFragNeeded(Ipv4Header header,
-                                   Ptr<const Packet> orgData,
-                                   uint16_t nextHopMtu);
+    void SendDestUnreachFragNeeded(SCIONHeader header, Ptr<const Packet> orgData, uint16_t nextHopMtu);
 
     /**
-     * \brief Send a Time Exceeded ICMP error
+     * \brief Send a Time Exceeded SCMP error
      * \param header the original IP header
      * \param orgData the original packet
      * \param isFragment true if the opcode must be FRAGMENT_REASSEMBLY
      */
-    void SendTimeExceededTtl(Ipv4Header header, Ptr<const Packet> orgData, bool isFragment);
+    // void SendTimeExceededTtl(Ipv4Header header, Ptr<const Packet> orgData, bool isFragment);
 
     /**
-     * \brief Send a Time Exceeded ICMP error
-     * \param header the original IP header
+     * \brief Send a Time Exceeded SCMP error
+     * \param header the original SCION header
      * \param orgData the original packet
      */
-    void SendDestUnreachPort(Ipv4Header header, Ptr<const Packet> orgData);
+    void SendDestUnreachPort(SCIONHeader header, Ptr<const Packet> orgData);
 
-    // From IpL4Protocol
-    void SetDownTarget(IpL4Protocol::DownTargetCallback cb) override;
-    void SetDownTarget6(IpL4Protocol::DownTargetCallback6 cb) override;
-    // From IpL4Protocol
-    IpL4Protocol::DownTargetCallback GetDownTarget() const override;
-    IpL4Protocol::DownTargetCallback6 GetDownTarget6() const override;
+    
+    void SetDownTargetSCION(SCIONL4Protocol::DownTargetCallback cb) override;
+    SCIONL4Protocol::DownTargetCallback GetDownTargetSCION() const override;
 
   protected:
     /*
@@ -138,96 +122,97 @@ class ScmpL4Protocol : public IpL4Protocol
 
   private:
     /**
-     * \brief Handles an incoming ICMP Echo packet
+     * \brief Handles an incoming SCMP Echo packet
      * \param p the packet
      * \param header the IP header
      * \param source the source address
      * \param destination the destination address
      */
     void HandleEcho(Ptr<Packet> p,
-                    Icmpv4Header header,
-                    Ipv4Address source,
-                    Ipv4Address destination);
+                    ScmpHeader header,
+                    SCIONAddress source,
+                    SCIONAddress destination);
     /**
-     * \brief Handles an incoming ICMP Destination Unreachable packet
+     * \brief Handles an incoming SCMP Destination Unreachable packet
      * \param p the packet
      * \param header the IP header
      * \param source the source address
      * \param destination the destination address
      */
     void HandleDestUnreach(Ptr<Packet> p,
-                           Icmpv4Header header,
-                           Ipv4Address source,
-                           Ipv4Address destination);
+                           ScmpHeader header,
+                           SCIONAddress source,
+                           SCIONAddress destination);
     /**
-     * \brief Handles an incoming ICMP Time Exceeded packet
+     * \brief Handles an incoming SCMP Time Exceeded packet
      * \param p the packet
-     * \param icmp the ICMP header
+     * \param icmp the SCMP header
      * \param source the source address
      * \param destination the destination address
-     */
+     *
     void HandleTimeExceeded(Ptr<Packet> p,
-                            Icmpv4Header icmp,
-                            Ipv4Address source,
-                            Ipv4Address destination);
+                            ScmpHeader icmp,
+                            SCIONAddress source,
+                            SCIONAddress destination);
+     */
     /**
-     * \brief Send an ICMP Destination Unreachable packet
+     * \brief Send an SCMP Destination Unreachable packet
      *
      * \param header the original IP header
      * \param orgData the original packet
-     * \param code the ICMP code
+     * \param code the SCMP code
      * \param nextHopMtu the next hop MTU
      */
-    void SendDestUnreach(Ipv4Header header,
+    void SendDestUnreach(SCIONHeader header,
                          Ptr<const Packet> orgData,
                          uint8_t code,
                          uint16_t nextHopMtu);
     /**
-     * \brief Send a generic ICMP packet
+     * \brief Send a generic SCMP packet
      *
      * \param packet the packet
      * \param dest the destination
-     * \param type the ICMP type
-     * \param code the ICMP code
+     * \param type the SCMP type
+     * \param code the SCMP code
      */
-    void SendMessage(Ptr<Packet> packet, Ipv4Address dest, uint8_t type, uint8_t code);
+    void SendMessage(Ptr<Packet> packet, SCIONAddress dest, uint8_t type, uint8_t code);
     /**
-     * \brief Send a generic ICMP packet
+     * \brief Send a generic SCMP packet
      *
      * \param packet the packet
      * \param source the source
      * \param dest the destination
-     * \param type the ICMP type
-     * \param code the ICMP code
+     * \param type the SCMP type
+     * \param code the SCMP code
      * \param route the route to be used
      */
     void SendMessage(Ptr<Packet> packet,
-                     Ipv4Address source,
-                     Ipv4Address dest,
+                     SCIONAddress source,
+                     SCIONAddress dest,
                      uint8_t type,
                      uint8_t code,
-                     Ptr<Ipv4Route> route);
+                     Ptr<SCIONRoute> route);
     /**
      * \brief Forward the message to an L4 protocol
      *
      * \param source the source
-     * \param icmp the ICMP header
+     * \param icmp the SCMP header
      * \param info info data (e.g., the target MTU)
-     * \param ipHeader the IP header carried by ICMP
-     * \param payload payload chunk carried by ICMP
+     * \param ipHeader the IP header carried by SCMP
+     * \param payload payload chunk carried by SCMP
      */
-    void Forward(Ipv4Address source,
-                 Icmpv4Header icmp,
+    void Forward(SCIONAddress source,
+                 ScmpHeader icmp,
                  uint32_t info,
-                 Ipv4Header ipHeader,
+                 SCIONHeader ipHeader,
                  const uint8_t payload[8]);
 
     void DoDispose() override;
 
     Ptr<Node> m_node;                              //!< the node this protocol is associated with
-    IpL4Protocol::DownTargetCallback m_downTarget; //!< callback to Ipv4::Send
+    SCIONL4Protocol::DownTargetCallback m_downTarget; //!< callback to SCION::Send
 };
 
 } // namespace ns3
 
-#endif /* ICMPV4_L4_PROTOCOL_H */
+#endif /* SCMPV4_L4_PROTOCOL_H */

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2006 Georgia Tech Research Corporation
+// Copyright (c)
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
@@ -19,16 +19,18 @@
 #ifndef SCION_L4_PROTOCOL_H
 #define SCION_L4_PROTOCOL_H
 
-#include "ns3/ipv4-l4-protocol.h"
-#include "ipv4-header.h"
-#include "ipv6-header.h"
+#include "ns3/ip-l4-protocol.h"
+#include "ns3/scion-header.h"
 
 #include "ns3/callback.h"
 #include "ns3/object.h"
 
 namespace ns3
 {
-
+class Ipv4Interface;
+class Ipv6Interface;
+class Ipv4Header;
+class Ipv6Header;
 class Packet;
 class SCIONAddress;
 class SCIONInterface;
@@ -73,7 +75,13 @@ class SCIONL4Protocol : public IpL4Protocol
                              Ptr<SCIONInterface> incomingInterface) = 0;
 
    
+    virtual RxStatus Receive(Ptr<Packet> p,
+                             const Ipv4Header& header,
+                             Ptr<Ipv4Interface> incomingInterface) override;
 
+    virtual RxStatus Receive(Ptr<Packet> p,
+                             const Ipv6Header& header,
+                             Ptr<Ipv6Interface> incomingInterface) override ;
 
     /**
      * \brief Called from lower-level layers to send the ICMPv6 packet up in the stack.

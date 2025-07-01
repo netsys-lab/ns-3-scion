@@ -5,6 +5,8 @@
 #include "ns3/test.h"
 #include "ns3/log.h"
 #include "ns3/scion-ia.h"
+#include "ns3/scion.h"
+#include "ns3/scion-l3-protocol.h"
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
@@ -23,10 +25,14 @@ SCIONNodeTestCase::SCIONNodeTestCase()
 {}
 
 
+/** helper function to 
+ * aggregate SCION protocol onto node, as long as there is no SCIONStackHelper yet.
+ */
 void CreateAndAggregateSCION(Ptr<Node> node)
 {   ObjectFactory factory;
     factory.SetTypeId("ns3::SCIONL3Protocol");
-    Ptr<Object> protocol = factory.Create<Object>();
+    Ptr<SCION> protocol = factory.Create<SCION>();
+    DynamicCast<SCIONL3Protocol>(protocol)->SetNode(node);
     node->AggregateObject(protocol);
 }
 
@@ -36,17 +42,17 @@ void SCIONNodeTestCase::Test01()
     /*
     N0, N3 are EndHosts
     N1, N2 BorderRouters (each with one external and internal interface)
-    No IP routing required
+    (No IP routing required)
 
     +--------------------+     +------------------+                                        
     |    AS I            |     | AS II            |                                        
-    |                    |     |                  |                                        
+    |                    |  XC |                  |                                        
     |                    |     |                  |                                        
     |    +-+  S0   +-+   |  S1 | +-+   S2    +-+  |                                        
     |    +-+-------+-+===========+-+---------+-+  |                                        
     |  N0          N1    |     |N2           N3   |                                        
     |                    |     |                  |                                        
-    |                    |     |                  |                                        
+    |    10.1.1.0        |     |    10.2.2.0      |                                        
     +--------------------+     +------------------+       
     */
     IaValue ia1(Ia(Isd(1), Asn(1)));
@@ -111,12 +117,40 @@ void SCIONNodeTestCase::Test01()
     CreateAndAggregateSCION(n2);
     CreateAndAggregateSCION(n3);
 
+    // on XC link routers N1, N2 use SCION over L2
+    // external SCION interface of BR N1 facing N2
     auto sif1 = n1->GetObject<SCION>()->AddInterface(nd1);
 
+    // external SCION interface of BR N2 facing N1
     auto sif2 = n2->GetObject<SCION>()->AddInterface(nd2);
+
+    // on S1 segment within ASI use SCION over IPv4
+    auto n1_internal = interfaces_s0.Get(1);
+    Ptr<Ipv4Interface> iface1 =  DynamicCast<Ipv4L3Protocol> (n1_internal.first)->GetInterface (n1_internal.second);
+    auto n1_sif = n1->GetObject<SCION>()->AddInterface(iface1);
+
+    // on S2 segment within ASII use SCION over IPv4
+    auto n2_internal = interfaces_s2.Get(0);
+    Ptr<Ipv4Interface> iface2 =  DynamicCast<Ipv4L3Protocol> (n2_internal.first)->GetInterface (n2_internal.second);
+    auto n2_sif = n2->GetObject<SCION>()->AddInterface(iface2);
+
+    // setup N0 to use SCION over IPv4
+    auto if0 = interfaces_s0.Get(0);
+    Ptr<Ipv4Interface> iface0 =  DynamicCast<Ipv4L3Protocol> (if0.first)->GetInterface (if0.second);
+    auto sif_0 =  n0->GetObject<SCION>()->AddInterface(iface0);
+
+    // setup N3 to use SCION over IPv4
+    auto if3 = interfaces_s2.Get(1);
+    Ptr<Ipv4Interface> iface3 =  DynamicCast<Ipv4L3Protocol> (if3.first)->GetInterface (if3.second);
+    auto sif_0 =  n3->GetObject<SCION>()->AddInterface(iface3);
+
 
 }
 
+void SCIONNodeTestCase::TestLoopback()
+{
+    auto node = Create<SCIONNode>();
+}
 
 void SCIONNodeTestCase::Test00()
 {

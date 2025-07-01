@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2006 Georgia Tech Research Corporation
+// Copyright (c) 
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
@@ -50,7 +50,7 @@ class SCIONRoute;
 class Node;
 class Socket;
 class SCIONRawSocketImpl;
-class IpL4Protocol;
+class SCIONL4Protocol;
 class ScmpL4Protocol;
 
 /**
@@ -114,14 +114,14 @@ class SCIONL3Protocol : public SCION
     Ptr<Socket> CreateRawSocket() override;
     void DeleteRawSocket(Ptr<Socket> socket) override;
 
-    void Insert(Ptr<IpL4Protocol> protocol) override;
-    void Insert(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex) override;
+    void Insert(Ptr<SCIONL4Protocol> protocol) override;
+    void Insert(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex) override;
 
-    void Remove(Ptr<IpL4Protocol> protocol) override;
-    void Remove(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex) override;
+    void Remove(Ptr<SCIONL4Protocol> protocol) override;
+    void Remove(Ptr<SCIONL4Protocol> protocol, uint32_t interfaceIndex) override;
 
-    Ptr<IpL4Protocol> GetProtocol(int protocolNumber) const override;
-    Ptr<IpL4Protocol> GetProtocol(int protocolNumber, int32_t interfaceIndex) const override;
+    Ptr<SCIONL4Protocol> GetProtocol(int protocolNumber) const override;
+    Ptr<SCIONL4Protocol> GetProtocol(int protocolNumber, int32_t interfaceIndex) const override;
 
     /**
      * Lower layer calls this method after calling L3Demux::Lookup
@@ -160,7 +160,7 @@ class SCIONL3Protocol : public SCION
               Ptr<SCIONRoute> route) override;
     /**
      * \param packet packet to send
-     * \param ipHeader IP Header
+     * \param ipHeader SCION Header
      * \param route route entry
      *
      * Higher-level layers call this method to send a packet with SCION Header
@@ -170,7 +170,7 @@ class SCIONL3Protocol : public SCION
 
     uint32_t AddInterface(Ptr<NetDevice> device) override;
 
-    uint32_t AddInterface(Ptr<SCIONInterface> ) override;
+    uint32_t AddInterface(Ptr<Ipv4Interface> ) override;
     uint32_t AddInterface(Ptr<Ipv6Interface> ) override;
     /**
      * \brief Get an interface.
@@ -204,7 +204,7 @@ class SCIONL3Protocol : public SCION
      *
      * \param [in] header the SCIONHeader
      * \param [in] packet the packet
-     * \param [in] interface IP-level interface number
+     * \param [in] interface L3-level interface number
      */
     typedef void (*SentTracedCallback)(const SCIONHeader& header,
                                        Ptr<const Packet> packet,
@@ -215,7 +215,7 @@ class SCIONL3Protocol : public SCION
      *
      * \param [in] packet the packet.
      * \param [in] SCION the SCION protocol
-     * \param [in] interface IP-level interface number
+     * \param [in] interface L3-level interface number
      * \deprecated The non-const \c Ptr<SCION> argument is deprecated
      * and will be changed to \c Ptr<const SCION> in a future release.
      */
@@ -257,8 +257,9 @@ class SCIONL3Protocol : public SCION
     friend class ::SCIONL3ProtocolTestCase;
 
     // class SCION attributes
-    void SetSCIONForward(bool forward) override;
-    bool GetSCIONForward() const override;
+    void SetSCIONForward(bool forward);
+    bool GetSCIONForward() const ;
+
     void SetWeakEsModel(bool model) override;
     bool GetWeakEsModel() const override;
 
@@ -267,8 +268,7 @@ class SCIONL3Protocol : public SCION
      * \param source source SCION address
      * \param destination destination SCION address
      * \param protocol L4 protocol
-     * \param payloadSize payload size
-     * \param ttl Time to Live
+     * \param payloadSize payload size     
      * \param tos Type of Service
      * \param mayFragment true if the packet can be fragmented
      * \return newly created SCION header
@@ -283,9 +283,9 @@ class SCIONL3Protocol : public SCION
      * \brief Send packet with route.
      * \param route route
      * \param packet packet to send
-     * \param ipHeader SCION header to add to the packet
+     * \param header SCION header to add to the packet
      */
-    void SendRealOut(Ptr<SCIONRoute> route, Ptr<Packet> packet, const SCIONHeader& ipHeader);
+    void SendRealOut(Ptr<SCIONRoute> route, Ptr<Packet> packet, const SCIONHeader& header);
 
     
     /**
@@ -317,15 +317,15 @@ class SCIONL3Protocol : public SCION
 
     /**
      * \brief Make a copy of the packet, add the header and invoke the TX trace callback
-     * \param ipHeader the IP header that will be added to the packet
+     * \param header the IP header that will be added to the packet
      * \param packet the packet
      * \param SCION the SCION protocol
-     * \param interface the IP-level interface index
+     * \param interface the L3-level interface index
      *
      * Note: If the TracedCallback API ever is extended, we could consider
      * to check for connected functions before adding the header
      */
-    void CallTxTrace(const SCIONHeader& ipHeader,
+    void CallTxTrace(const SCIONHeader& header,
                      Ptr<Packet> packet,
                      Ptr<SCION> SCION,
                      uint32_t interface);
@@ -351,7 +351,7 @@ class SCIONL3Protocol : public SCION
     /**
      * \brief Container of the SCION L4 instances.
      */
-    typedef std::map<L4ListKey_t, Ptr<IpL4Protocol>> L4List_t;
+    typedef std::map<L4ListKey_t, Ptr<SCIONL4Protocol>> L4List_t;
 
     bool m_scionForward;               //!< Forwarding packets (i.e. router mode) state.
                                       // Note: no forwarding is done by the L3 layer. This only sets the attributes of all interfaces

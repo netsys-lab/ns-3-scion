@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005,2006,2007 INRIA
+ * Copyright (c)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,7 +22,7 @@
 #include "ns3/scion-header.h"
 #include "scion-l3-protocol.h"
 #include "scion-queue-disc-item.h"
-#include "loopback-net-device.h"
+#include "ns3/loopback-net-device.h"
 
 #include "ns3/log.h"
 #include "ns3/net-device.h"
@@ -199,7 +199,7 @@ SCIONInterface::Send(Ptr<Packet> p, const SCIONHeader& hdr, SCIONAddress dest)
     // is this packet aimed at a local interface ?
     for (SCIONInterfaceAddressListCI i = m_ifaddrs.begin(); i != m_ifaddrs.end(); ++i)
     {
-        if (dest == (*i).GetLocal())
+        if (dest == (*i).GetAddress())
         {
             p->AddHeader(hdr);
             m_tc->Receive(m_device,
@@ -299,7 +299,7 @@ SCIONInterface::RemoveAddress(SCIONAddress address)
 {
     NS_LOG_FUNCTION(this << address);
 
-    if (address == Ipv4Address::GetLoopback())
+    if (address == SCIONAddress::GetLoopback())
     {
         NS_LOG_WARN("Cannot remove loopback address.");
         return SCIONInterfaceAddress();
@@ -307,7 +307,7 @@ SCIONInterface::RemoveAddress(SCIONAddress address)
 
     for (SCIONInterfaceAddressListI it = m_ifaddrs.begin(); it != m_ifaddrs.end(); it++)
     {
-        if ((*it).GetLocal() == address)
+        if ((*it).GetAddress() == address)
         {
             SCIONInterfaceAddress ifAddr = *it;
             m_ifaddrs.erase(it);

@@ -135,7 +135,7 @@ class ScionUdpL4Protocol : public SCIONL4Protocol, public UdpL4Protocol
               uint16_t sport,
               uint16_t dport);
     /**
-     * \brief Send a packet via UDP (IPv4)
+     * \brief Send a packet via UDP (SCION)
      * \param packet The packet to send
      * \param saddr The source SCIONAddress
      * \param daddr The destination SCIONAddress

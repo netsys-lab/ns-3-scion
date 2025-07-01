@@ -3,7 +3,7 @@
 
 #include "ns3/scion-header.h"
 #include "ns3/scion-interface.h"
-#include "ns3/scion-route.h"
+//#include "ns3/scion-route.h"
 #include "ns3/socket.h"
 
 #include <list>

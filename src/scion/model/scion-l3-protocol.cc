@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2006 Georgia Tech Research Corporation
+// Copyright (c)
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
@@ -20,10 +20,10 @@
 #include "scion-l3-protocol.h"
 
 
-#include "scmpv4-l4-protocol.h"
+#include "scmp-l4-protocol.h"
 #include "scion-interface.h"
 #include "scion-raw-socket-impl.h"
-#include "loopback-net-device.h"
+#include "ns3/loopback-net-device.h"
 
 #include "ns3/boolean.h"
 #include "ns3/callback.h"
@@ -60,19 +60,19 @@ SCIONL3Protocol::GetTypeId()
             .SetGroupName("Internet")
             .AddConstructor<SCIONL3Protocol>()            
             .AddTraceSource("Tx",
-                            "Send ipv4 packet to outgoing interface.",
+                            "Send SCION packet to outgoing interface.",
                             MakeTraceSourceAccessor(&SCIONL3Protocol::m_txTrace),
                             "ns3::SCIONL3Protocol::TxRxTracedCallback")
             .AddTraceSource("Rx",
-                            "Receive ipv4 packet from incoming interface.",
+                            "Receive SCION packet from incoming interface.",
                             MakeTraceSourceAccessor(&SCIONL3Protocol::m_rxTrace),
                             "ns3::SCIONL3Protocol::TxRxTracedCallback")
             .AddTraceSource("Drop",
-                            "Drop ipv4 packet",
+                            "Drop SCION packet",
                             MakeTraceSourceAccessor(&SCIONL3Protocol::m_dropTrace),
                             "ns3::SCIONL3Protocol::DropTracedCallback")
             .AddAttribute("InterfaceList",
-                          "The set of Ipv4 interfaces associated to this Ipv4 stack.",
+                          "The set of SCION interfaces associated to this SCION stack.",
                           ObjectVectorValue(),
                           MakeObjectVectorAccessor(&SCIONL3Protocol::m_interfaces),
                           MakeObjectVectorChecker<SCIONInterface>())
@@ -83,7 +83,7 @@ SCIONL3Protocol::GetTypeId()
                             MakeTraceSourceAccessor(&SCIONL3Protocol::m_sendOutgoingTrace),
                             "ns3::SCIONL3Protocol::SentTracedCallback")          
             .AddTraceSource("LocalDeliver",
-                            "An IPv4 packet was received by/for this node, "
+                            "A SCION packet was received by/for this node, "
                             "and it is being forward up the stack",
                             MakeTraceSourceAccessor(&SCIONL3Protocol::m_localDeliverTrace),
                             "ns3::SCIONL3Protocol::SentTracedCallback")
@@ -301,8 +301,7 @@ SCIONL3Protocol::SetupLoopback()
     }
     interface->SetDevice(device);
     interface->SetNode(m_node);
-    SCIONInterfaceAddress ifaceAddr =
-        SCIONInterfaceAddress(SCIONAddress::GetLoopback(), Ipv4Mask::GetLoopback());
+    auto ifaceAddr = SCIONInterfaceAddress(SCIONAddress::GetLoopback());
     interface->AddAddress(ifaceAddr);
     uint32_t index = AddSCIONInterface(interface);
     Ptr<Node> node = GetObject<Node>();
@@ -361,7 +360,8 @@ uint32_t SCIONL3Protocol::AddInterface(Ptr<Ipv4Interface> underlay_if )
 
     uint32_t SCIONL3Protocol::AddInterface(Ptr<Ipv6Interface> underlay_if) 
     {
-
+        NS_ASSERT_MSG(false, "not implemented yet");
+        return 0;
     }
 
 uint32_t
@@ -461,18 +461,19 @@ SCIONL3Protocol::IsDestinationAddress(SCIONAddress address, uint32_t iif) const
     for (uint32_t i = 0; i < GetNAddresses(iif); i++)
     {
         SCIONInterfaceAddress iaddr = GetAddress(iif, i);
-        if (address == iaddr.GetLocal())
+        if (address == iaddr.GetAddress())
         {
             NS_LOG_LOGIC("For me (destination " << address << " match)");
             return true;
         }
+        /*
         if (address == iaddr.GetBroadcast())
         {
             NS_LOG_LOGIC("For me (interface broadcast address)");
             return true;
-        }
+        }*/
     }
-
+    /*
     if (address.IsMulticast())
     {
 #ifdef NOTYET
@@ -489,7 +490,7 @@ SCIONL3Protocol::IsDestinationAddress(SCIONAddress address, uint32_t iif) const
     {
         NS_LOG_LOGIC("For me (Ipv4Addr broadcast address)");
         return true;
-    }
+    }*/
 
     if (GetWeakEsModel()) // Check other interfaces
     {
@@ -634,7 +635,7 @@ Ptr<ScmpL4Protocol>
 SCIONL3Protocol::GetScmp() const
 {
     NS_LOG_FUNCTION(this);
-    Ptr<IpL4Protocol> prot = GetProtocol(Icmpv4L4Protocol::GetStaticProtocolNumber());
+    Ptr<IpL4Protocol> prot = GetProtocol(ScmpL4Protocol::GetStaticProtocolNumber());
     if (prot)
     {
         return prot->GetObject<ScmpL4Protocol>();
