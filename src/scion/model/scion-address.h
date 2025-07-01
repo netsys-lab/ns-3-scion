@@ -1,6 +1,6 @@
 #pragma once
 /*
- * Copyright (c) 2005 INRIA
+ * Copyright (c)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ * Author:
  */
 
 #ifndef SCION_ADDRESS_H
@@ -77,6 +77,16 @@ class SCIONAddress
     void Print(std::ostream& os) const;
 
     /**
+     * \return the 0-0,[0.0.0.0] address
+     */
+    static SCIONAddress GetAny();
+
+    /**
+     * \return the 0-0,[127.0.0.1] address
+     */
+    static SCIONAddress GetLoopback();
+
+    /**
      * \return true if address is initialized (i.e., set to something), false otherwise
      */
     //bool IsInitialized() const;
@@ -91,7 +101,7 @@ class SCIONAddress
 
    static bool IsMatchingType(const Address& address);
     
-    operator Address() const;
+    explicit operator Address() const;
 
     static SCIONAddress ConvertFrom(const Address& address);
 

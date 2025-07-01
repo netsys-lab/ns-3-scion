@@ -102,6 +102,16 @@ SCIONAddress::SCIONAddress(Isd isd, Asn as, const Address& host)
     addrType = hostAddrToAddrType(_hostAddr);
 }
 
+SCIONAddress GetLoopback()
+{
+    return SCIONAddress(Ia(),Ipv4Address::GetLoopback());
+}
+
+SCIONAddress GetAny()
+{
+    return SCIONAddress(Ia(), Ipv4Address::GetAny());
+}
+
 SCIONAddress&
 SCIONAddress::Deserialize(const uint8_t* buffer)
 {
